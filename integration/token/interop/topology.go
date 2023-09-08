@@ -533,7 +533,7 @@ func AssetTransferTopology(tokenSDKDriver string) []api.Topology {
 		fabric.WithAnonymousIdentity(),
 		fabric.WithDefaultNetwork("alpha"),
 		token.WithIssuerIdentity("issuer.id1"),
-		token.WithOwnerIdentity(tokenSDKDriver, "issuer.id1.owner"),
+		token.WithOwnerIdentity("issuer.id1.owner"),
 	)
 	issuerAlpha.RegisterViewFactory("issue", &views2.IssueCashViewFactory{})
 	issuerAlpha.RegisterViewFactory("balance", &views2.BalanceViewFactory{})
@@ -551,7 +551,7 @@ func AssetTransferTopology(tokenSDKDriver string) []api.Topology {
 		fabric.WithAnonymousIdentity(),
 		fabric.WithDefaultNetwork("beta"),
 		token.WithIssuerIdentity("issuer.id2"),
-		token.WithOwnerIdentity(tokenSDKDriver, "issuer.id2.owner"),
+		token.WithOwnerIdentity("issuer.id2.owner"),
 	)
 	issuerBeta.RegisterViewFactory("issue", &views2.IssueCashViewFactory{})
 	issuerBeta.RegisterViewFactory("balance", &views2.BalanceViewFactory{})
@@ -577,7 +577,7 @@ func AssetTransferTopology(tokenSDKDriver string) []api.Topology {
 		fabric.WithNetworkOrganization("alpha", "Org2"),
 		fabric.WithAnonymousIdentity(),
 		fabric.WithDefaultNetwork("alpha"),
-		token.WithOwnerIdentity(tokenSDKDriver, "alice.id1"),
+		token.WithOwnerIdentity("alice.id1"),
 	)
 	alice.RegisterResponder(&views2.AcceptCashView{}, &views2.IssueCashView{})
 	alice.RegisterViewFactory("balance", &views2.BalanceViewFactory{})
@@ -595,7 +595,7 @@ func AssetTransferTopology(tokenSDKDriver string) []api.Topology {
 		fabric.WithNetworkOrganization("beta", "Org4"),
 		fabric.WithAnonymousIdentity(),
 		fabric.WithDefaultNetwork("beta"),
-		token.WithOwnerIdentity(tokenSDKDriver, "bob.id1"),
+		token.WithOwnerIdentity("bob.id1"),
 	)
 	bob.RegisterResponder(&views2.AcceptCashView{}, &views2.IssueCashView{})
 	bob.RegisterViewFactory("balance", &views2.BalanceViewFactory{})

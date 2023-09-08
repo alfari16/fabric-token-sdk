@@ -108,7 +108,7 @@ func (e *EnrollmentService) GetRevocationHandler(auditInfo []byte) (string, erro
 	}
 
 	// Try to unmarshal it as ScriptInfo
-	si := &htlc.ScriptInfo{}
+	si := &interop.ScriptInfo{}
 	err := json.Unmarshal(auditInfo, si)
 	if err == nil && (len(si.Sender) != 0 || len(si.Recipient) != 0) {
 		if len(si.Recipient) != 0 {
