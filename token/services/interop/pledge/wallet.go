@@ -9,14 +9,11 @@ package pledge
 import (
 	"encoding/json"
 
-	"github.com/hyperledger-labs/fabric-smart-client/platform/fabric"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view"
 	view2 "github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
 	"github.com/hyperledger-labs/fabric-token-sdk/token"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
-	fabric3 "github.com/hyperledger-labs/fabric-token-sdk/token/services/network/fabric"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/services/network/processor"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/services/vault"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/network"
 	token2 "github.com/hyperledger-labs/fabric-token-sdk/token/token"
 	"github.com/pkg/errors"
 )
@@ -55,21 +52,20 @@ type IssuerWallet struct {
 }
 
 func NewIssuerWallet(sp view.ServiceProvider, wallet *token.IssuerWallet) *IssuerWallet {
-	ch := fabric.GetDefaultChannel(sp)
-	ts, err := processor.NewCommonTokenStore(sp, wallet.TMS().ID())
-	if err != nil {
-		logger.Errorf("could not create a new common token store; err: [%v]", err)
+	tmsID := wallet.TMS().ID()
+	net := network.GetInstance(sp, tmsID.Network, tmsID.Channel)
+	if net == nil {
+		logger.Errorf("could not find network [%s]", tmsID)
 		return nil
 	}
-	v := vault.New(
-		sp,
-		ch.Name(),
-		token.GetManagementService(sp).Namespace(),
-		fabric3.NewVault(ch, ts),
-	)
+	v, err := net.Vault(tmsID.Namespace)
+	if err != nil {
+		logger.Errorf("failed to get vault for [%s]: [%s]", tmsID, err)
+	}
+
 	return &IssuerWallet{
 		wallet:       wallet,
-		queryService: v.QueryEngine(),
+		queryService: v,
 	}
 }
 
@@ -98,21 +94,20 @@ func GetWallet(sp view.ServiceProvider, id string, opts ...token.ServiceOption) 
 }
 
 func Wallet(sp view.ServiceProvider, wallet *token.OwnerWallet) *OwnerWallet {
-	ch := fabric.GetDefaultChannel(sp)
-	ts, err := processor.NewCommonTokenStore(sp, wallet.TMS().ID())
-	if err != nil {
-		logger.Errorf("could not create a new common token store; err: [%v]", err)
+	tmsID := wallet.TMS().ID()
+	net := network.GetInstance(sp, tmsID.Network, tmsID.Channel)
+	if net == nil {
+		logger.Errorf("could not find network [%s]", tmsID)
 		return nil
 	}
-	v := vault.New(
-		sp,
-		ch.Name(),
-		token.GetManagementService(sp).Namespace(),
-		fabric3.NewVault(ch, ts),
-	)
+	v, err := net.Vault(tmsID.Namespace)
+	if err != nil {
+		logger.Errorf("failed to get vault for [%s]: [%s]", tmsID, err)
+	}
+
 	return &OwnerWallet{
 		wallet:       wallet,
-		queryService: v.QueryEngine(),
+		queryService: v,
 	}
 }
 

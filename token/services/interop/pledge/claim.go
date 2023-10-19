@@ -11,11 +11,11 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/hyperledger-labs/fabric-smart-client/platform/fabric"
 	view2 "github.com/hyperledger-labs/fabric-smart-client/platform/view"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/session"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
 	"github.com/hyperledger-labs/fabric-token-sdk/token"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/ttx"
 	token2 "github.com/hyperledger-labs/fabric-token-sdk/token/token"
 	"github.com/pkg/errors"
 )
@@ -206,14 +206,16 @@ func (v *receiveClaimRequestView) Call(context view.Context) (interface{}, error
 	return req, nil
 }
 
-func ValidateClaimRequest(context view.Context, req *ClaimRequest) error {
-	destination := FabricURL(
-		token.TMSID{
-			Network:   fabric.GetDefaultFNS(context).Name(),
-			Channel:   fabric.GetDefaultChannel(context).Name(),
-			Namespace: token.GetManagementService(context, token.WithTMS(fabric.GetDefaultFNS(context).Name(), fabric.GetDefaultChannel(context).Name(), "")).Namespace(),
-		},
-	)
+func ValidateClaimRequest(context view.Context, req *ClaimRequest, opts ...ttx.TxOption) error {
+	txOpts, err := ttx.CompileTxOption(opts...)
+	if err != nil {
+		return errors.WithMessage(err, "failed compiling tx options")
+	}
+	tms := token.GetManagementService(context, token.WithTMSID(txOpts.TMSID()))
+	if tms == nil {
+		return errors.Errorf("cannot find tms for [%s]", txOpts.TMSID())
+	}
+	destination := FabricURL(tms.ID())
 	info := &Info{
 		Amount:        req.Quantity,
 		TokenID:       req.OriginTokenID,
@@ -227,8 +229,7 @@ func ValidateClaimRequest(context view.Context, req *ClaimRequest) error {
 		},
 	}
 
-	err := Vault(context).Store(info)
-	if err != nil {
+	if err := Vault(context).Store(info); err != nil {
 		return errors.WithMessagef(err, "failed storing temporary pledge info for [%s]", info.Source)
 	}
 	ssp, err := GetStateServiceProvider(context)

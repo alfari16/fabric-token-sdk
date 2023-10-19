@@ -8,6 +8,7 @@ package driver
 
 import (
 	fabric2 "github.com/hyperledger-labs/fabric-smart-client/platform/fabric"
+	weaver2 "github.com/hyperledger-labs/fabric-smart-client/platform/fabric/services/weaver"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/kvs"
 	"github.com/hyperledger-labs/fabric-token-sdk/token"
@@ -21,6 +22,7 @@ import (
 	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity/msp/common"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/core/state/fabric"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/driver"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/pledge"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/network"
 	"github.com/pkg/errors"
 )
@@ -28,11 +30,19 @@ import (
 type Driver struct{}
 
 func (d *Driver) NewStateQueryExecutor(sp driver.ServiceProvider, url string) (driver.StateQueryExecutor, error) {
-	return fabric3.NewStateQueryExecutor(sp, url, fabric2.GetDefaultFNS(sp))
+	return fabric3.NewStateQueryExecutor(weaver2.GetProvider(sp), url, fabric2.GetDefaultFNS(sp))
 }
 
 func (d *Driver) NewStateVerifier(sp driver.ServiceProvider, url string) (driver.StateVerifier, error) {
-	return fabric3.NewStateVerifier(sp, url, fabric2.GetDefaultFNS(sp))
+	return fabric3.NewStateVerifier(
+		weaver2.GetProvider(sp),
+		pledge.Vault(sp),
+		func(id string) *fabric2.NetworkService {
+			return fabric2.GetFabricNetworkService(sp, id)
+		},
+		url,
+		fabric2.GetDefaultFNS(sp),
+	)
 }
 
 func (d *Driver) PublicParametersFromBytes(params []byte) (driver.PublicParameters, error) {

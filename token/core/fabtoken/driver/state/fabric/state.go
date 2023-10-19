@@ -13,7 +13,6 @@ import (
 
 	"github.com/hyperledger-labs/fabric-smart-client/platform/fabric"
 	weaver2 "github.com/hyperledger-labs/fabric-smart-client/platform/fabric/services/weaver"
-	"github.com/hyperledger-labs/fabric-smart-client/platform/view"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/flogging"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
 	fabric2 "github.com/hyperledger-labs/fabric-token-sdk/token/core/state/fabric"
@@ -27,17 +26,27 @@ import (
 
 var logger = flogging.MustGetLogger("token-sdk.fabtoken")
 
+type RelayProvider interface {
+	Relay(fns *fabric.NetworkService) *weaver2.Relay
+}
+
+type PledgeVault interface {
+	PledgeByTokenID(tokenID *token.ID) ([]*pledge.Info, error)
+}
+
+type GetFabricNetworkServiceFunc = func(string) *fabric.NetworkService
+
 type StateQueryExecutor struct {
-	SP               view.ServiceProvider
+	RelayProvider    RelayProvider
 	TargetNetworkURL string
 	RelaySelector    *fabric.NetworkService
 }
 
-func NewStateQueryExecutor(SP view.ServiceProvider, targetNetworkURL string, relaySelector *fabric.NetworkService) (*StateQueryExecutor, error) {
+func NewStateQueryExecutor(relayProvider RelayProvider, targetNetworkURL string, relaySelector *fabric.NetworkService) (*StateQueryExecutor, error) {
 	if err := fabric2.CheckFabricScheme(targetNetworkURL); err != nil {
 		return nil, err
 	}
-	return &StateQueryExecutor{SP: SP, TargetNetworkURL: targetNetworkURL, RelaySelector: relaySelector}, nil
+	return &StateQueryExecutor{RelayProvider: relayProvider, TargetNetworkURL: targetNetworkURL, RelaySelector: relaySelector}, nil
 }
 
 func (p *StateQueryExecutor) Exist(tokenID *token.ID) ([]byte, error) {
@@ -47,7 +56,7 @@ func (p *StateQueryExecutor) Exist(tokenID *token.ID) ([]byte, error) {
 	}
 
 	// get local relay
-	relay := weaver2.GetProvider(p.SP).Relay(p.RelaySelector)
+	relay := p.RelayProvider.Relay(p.RelaySelector)
 
 	// Query
 	logger.Debugf("Query [%s] for proof of existence of token [%s], input [%s]", p.TargetNetworkURL, tokenID.String(), base64.StdEncoding.EncodeToString(raw))
@@ -75,7 +84,7 @@ func (p *StateQueryExecutor) DoesNotExist(tokenID *token.ID, origin string, dead
 	}
 
 	// get local relay
-	relay := weaver2.GetProvider(p.SP).Relay(p.RelaySelector)
+	relay := p.RelayProvider.Relay(p.RelaySelector)
 
 	// Query
 	logger.Debugf("Query [%s] for proof of non-existence of token [%s], input [%s]", p.TargetNetworkURL, tokenID.String(), base64.StdEncoding.EncodeToString(raw))
@@ -104,7 +113,7 @@ func (p *StateQueryExecutor) ExistsWithMetadata(tokenID *token.ID, origin string
 	}
 
 	// Get local relay
-	relay := weaver2.GetProvider(p.SP).Relay(p.RelaySelector)
+	relay := p.RelayProvider.Relay(p.RelaySelector)
 
 	// Query
 	logger.Debugf("Query [%s] for proof of existence of metadata with token [%s], input [%s]", p.TargetNetworkURL, tokenID.String(), base64.StdEncoding.EncodeToString(raw))
@@ -121,21 +130,29 @@ func (p *StateQueryExecutor) ExistsWithMetadata(tokenID *token.ID, origin string
 }
 
 type StateVerifier struct {
-	SP            view.ServiceProvider
-	NetworkURL    string
-	RelaySelector *fabric.NetworkService
+	RelayProvider           RelayProvider
+	NetworkURL              string
+	RelaySelector           *fabric.NetworkService
+	PledgeVault             PledgeVault
+	GetFabricNetworkService GetFabricNetworkServiceFunc
 }
 
-func NewStateVerifier(SP view.ServiceProvider, networkURL string, relaySelector *fabric.NetworkService) (*StateVerifier, error) {
+func NewStateVerifier(relayProvider RelayProvider, PledgeVault PledgeVault, GetFabricNetworkService GetFabricNetworkServiceFunc, networkURL string, relaySelector *fabric.NetworkService) (*StateVerifier, error) {
 	if err := fabric2.CheckFabricScheme(networkURL); err != nil {
 		return nil, err
 	}
-	return &StateVerifier{SP: SP, NetworkURL: networkURL, RelaySelector: relaySelector}, nil
+	return &StateVerifier{
+		RelayProvider:           relayProvider,
+		NetworkURL:              networkURL,
+		RelaySelector:           relaySelector,
+		PledgeVault:             PledgeVault,
+		GetFabricNetworkService: GetFabricNetworkService,
+	}, nil
 }
 
 func (v *StateVerifier) VerifyProofExistence(proofRaw []byte, tokenID *token.ID, metadata []byte) error {
 	// Get local relay
-	relay := weaver2.GetProvider(v.SP).Relay(v.RelaySelector)
+	relay := v.RelayProvider.Relay(v.RelaySelector)
 
 	// Parse proof
 	proof, err := relay.ToFabric().ProofFromBytes(proofRaw)
@@ -175,7 +192,7 @@ func (v *StateVerifier) VerifyProofExistence(proofRaw []byte, tokenID *token.ID,
 	}
 	// Validate against pledge
 	logger.Debugf("verify proof of existence for token id [%s]", tokenID)
-	pledges, err := pledge.Vault(v.SP).PledgeByTokenID(tokenID)
+	pledges, err := v.PledgeVault.PledgeByTokenID(tokenID)
 	if err != nil {
 		logger.Errorf("failed retrieving pledge info for token id [%s]: [%s]", tokenID, err)
 		return errors.WithMessagef(err, "failed getting pledge for [%s]", tokenID)
@@ -233,7 +250,7 @@ func (v *StateVerifier) VerifyProofNonExistence(proofRaw []byte, tokenID *token.
 		return errors.Wrapf(err, "failed to parse network url")
 	}
 	// get local relay
-	relay := weaver2.GetProvider(v.SP).Relay(fabric.GetFabricNetworkService(v.SP, tokenOriginNetworkTMSID.Network))
+	relay := v.RelayProvider.Relay(v.GetFabricNetworkService(tokenOriginNetworkTMSID.Network))
 
 	// parse proof
 	proof, err := relay.ToFabric().ProofFromBytes(proofRaw)
@@ -297,7 +314,7 @@ func (v *StateVerifier) VerifyProofTokenWithMetadataExistence(proofRaw []byte, t
 	}
 
 	// get local relay
-	relay := weaver2.GetProvider(v.SP).Relay(fabric.GetFabricNetworkService(v.SP, tokenOriginNetworkTMSID.Network))
+	relay := v.RelayProvider.Relay(v.GetFabricNetworkService(tokenOriginNetworkTMSID.Network))
 
 	// parse proof
 	proof, err := relay.ToFabric().ProofFromBytes(proofRaw)
