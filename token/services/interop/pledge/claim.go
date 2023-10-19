@@ -197,7 +197,9 @@ func (v *receiveClaimRequestView) Call(context view.Context) (interface{}, error
 		return nil, errors.Wrapf(err, "failed binding caller's identity to request's recipient")
 	}
 
-	if err := tms.WalletManager().RegisterRecipientIdentity(req.Recipient, req.RecipientAuditInfo, nil); err != nil {
+	if err := tms.WalletManager().RegisterRecipientIdentity(&token.RecipientData{
+		Identity:  req.Recipient,
+		AuditInfo: req.RecipientAuditInfo}); err != nil {
 		return nil, errors.Wrapf(err, "failed registering request recipient info")
 	}
 

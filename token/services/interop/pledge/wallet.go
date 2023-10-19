@@ -56,7 +56,7 @@ type IssuerWallet struct {
 
 func NewIssuerWallet(sp view.ServiceProvider, wallet *token.IssuerWallet) *IssuerWallet {
 	ch := fabric.GetDefaultChannel(sp)
-	ts, err := processor.NewCommonTokenStore(sp)
+	ts, err := processor.NewCommonTokenStore(sp, wallet.TMS().ID())
 	if err != nil {
 		logger.Errorf("could not create a new common token store; err: [%v]", err)
 		return nil
@@ -99,7 +99,7 @@ func GetWallet(sp view.ServiceProvider, id string, opts ...token.ServiceOption) 
 
 func Wallet(sp view.ServiceProvider, wallet *token.OwnerWallet) *OwnerWallet {
 	ch := fabric.GetDefaultChannel(sp)
-	ts, err := processor.NewCommonTokenStore(sp)
+	ts, err := processor.NewCommonTokenStore(sp, wallet.TMS().ID())
 	if err != nil {
 		logger.Errorf("could not create a new common token store; err: [%v]", err)
 		return nil
