@@ -360,7 +360,7 @@ func HTLCCheckExistenceReceivedExpiredByHash(network *integration.Infrastructure
 	}
 }
 
-func htlcClaim(network *integration.Infrastructure, tmsID token.TMSID, id string, wallet string, preImage []byte, errorMsgs ...string) string {
+func HTLCClaim(network *integration.Infrastructure, tmsID token.TMSID, id string, wallet string, preImage []byte, errorMsgs ...string) string {
 	txIDBoxed, err := network.Client(id).CallView("htlc.claim", common.JSONMarshall(&htlc.Claim{
 		TMSID:    tmsID,
 		Wallet:   wallet,
@@ -399,7 +399,7 @@ func htlcClaim(network *integration.Infrastructure, tmsID token.TMSID, id string
 	}
 }
 
-func fastExchange(network *integration.Infrastructure, id string, recipient string, tmsID1 token.TMSID, typ1 string, amount1 uint64, tmsID2 token.TMSID, typ2 string, amount2 uint64, deadline time.Duration) {
+func FastExchange(network *integration.Infrastructure, id string, recipient string, tmsID1 token.TMSID, typ1 string, amount1 uint64, tmsID2 token.TMSID, typ2 string, amount2 uint64, deadline time.Duration) {
 	_, err := network.Client(id).CallView("htlc.fastExchange", common.JSONMarshall(&htlc.FastExchange{
 		Recipient:           network.Identity(recipient),
 		TMSID1:              tmsID1,
@@ -415,7 +415,7 @@ func fastExchange(network *integration.Infrastructure, id string, recipient stri
 	time.Sleep(10 * time.Second)
 }
 
-func scan(network *integration.Infrastructure, id string, hash []byte, hashFunc crypto.Hash, startingTransactionID string, opts ...token.ServiceOption) {
+func Scan(network *integration.Infrastructure, id string, hash []byte, hashFunc crypto.Hash, startingTransactionID string, opts ...token.ServiceOption) {
 	options, err := token.CompileServiceOptions(opts...)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -429,7 +429,7 @@ func scan(network *integration.Infrastructure, id string, hash []byte, hashFunc 
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func scanWithError(network *integration.Infrastructure, id string, hash []byte, hashFunc crypto.Hash, startingTransactionID string, errorMsgs []string, opts ...token.ServiceOption) {
+func ScanWithError(network *integration.Infrastructure, id string, hash []byte, hashFunc crypto.Hash, startingTransactionID string, errorMsgs []string, opts ...token.ServiceOption) {
 	options, err := token.CompileServiceOptions(opts...)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -446,7 +446,7 @@ func scanWithError(network *integration.Infrastructure, id string, hash []byte, 
 	}
 }
 
-func pledge(network *integration.Infrastructure, sender, wallet, typ string, amount uint64, receiver, issuer, destNetwork string, deadline time.Duration, opts ...token.ServiceOption) (string, string) {
+func Pledge(network *integration.Infrastructure, sender, wallet, typ string, amount uint64, receiver, issuer, destNetwork string, deadline time.Duration, opts ...token.ServiceOption) (string, string) {
 	options, err := token.CompileServiceOptions(opts...)
 	Expect(err).NotTo(HaveOccurred())
 	raw, err := network.Client(sender).CallView("transfer.pledge", common.JSONMarshall(&pledge2.Pledge{
@@ -460,7 +460,7 @@ func pledge(network *integration.Infrastructure, sender, wallet, typ string, amo
 		OriginWallet:          wallet,
 	}))
 	Expect(err).NotTo(HaveOccurred())
-	info := &pledge2.Info{}
+	info := &pledge2.Result{}
 	common.JSONUnmarshal(raw.([]byte), info)
 	Expect(network.Client(sender).IsTxFinal(
 		info.TxID,
@@ -471,7 +471,7 @@ func pledge(network *integration.Infrastructure, sender, wallet, typ string, amo
 	return info.TxID, info.PledgeID
 }
 
-func pledgeIDExists(network *integration.Infrastructure, id, pledgeid string, startingTransactionID string, opts ...token.ServiceOption) {
+func PledgeIDExists(network *integration.Infrastructure, id, pledgeid string, startingTransactionID string, opts ...token.ServiceOption) {
 	options, err := token.CompileServiceOptions(opts...)
 	Expect(err).NotTo(HaveOccurred())
 	raw, err := network.Client(id).CallView("transfer.scan", common.JSONMarshall(&pledge2.Scan{
@@ -486,7 +486,7 @@ func pledgeIDExists(network *integration.Infrastructure, id, pledgeid string, st
 	Expect(res).Should(BeTrue())
 }
 
-func scanPledgeIDWithError(network *integration.Infrastructure, id, pledgeid string, startingTransactionID string, errorMsgs []string, opts ...token.ServiceOption) {
+func ScanPledgeIDWithError(network *integration.Infrastructure, id, pledgeid string, startingTransactionID string, errorMsgs []string, opts ...token.ServiceOption) {
 	options, err := token.CompileServiceOptions(opts...)
 	Expect(err).NotTo(HaveOccurred())
 	_, err = network.Client(id).CallView("transfer.scan", common.JSONMarshall(&pledge2.Scan{
@@ -501,7 +501,7 @@ func scanPledgeIDWithError(network *integration.Infrastructure, id, pledgeid str
 	}
 }
 
-func reclaim(network *integration.Infrastructure, sender string, wallet string, txid string, opts ...token.ServiceOption) string {
+func Reclaim(network *integration.Infrastructure, sender string, wallet string, txid string, opts ...token.ServiceOption) string {
 	options, err := token.CompileServiceOptions(opts...)
 	Expect(err).NotTo(HaveOccurred())
 	txID, err := network.Client(sender).CallView("transfer.reclaim", common.JSONMarshall(&pledge2.Reclaim{ // TokenID contains the identifier of the token to be reclaimed.
@@ -515,7 +515,7 @@ func reclaim(network *integration.Infrastructure, sender string, wallet string, 
 	return common.JSONUnmarshalString(txID)
 }
 
-func reclaimWithError(network *integration.Infrastructure, sender string, wallet string, txid string, opts ...token.ServiceOption) {
+func ReclaimWithError(network *integration.Infrastructure, sender string, wallet string, txid string, opts ...token.ServiceOption) {
 	options, err := token.CompileServiceOptions(opts...)
 	Expect(err).NotTo(HaveOccurred())
 	_, err = network.Client(sender).CallView("transfer.reclaim", common.JSONMarshall(&pledge2.Reclaim{ // TokenID contains the identifier of the token to be reclaimed.
@@ -526,7 +526,7 @@ func reclaimWithError(network *integration.Infrastructure, sender string, wallet
 	Expect(err).To(HaveOccurred())
 }
 
-func claim(network *integration.Infrastructure, recipient string, issuer string, originTokenID *token2.ID) string {
+func Claim(network *integration.Infrastructure, recipient string, issuer string, originTokenID *token2.ID) string {
 	txid, err := network.Client(recipient).CallView("transfer.claim", common.JSONMarshall(&pledge2.Claim{
 		OriginTokenID: originTokenID,
 		Issuer:        issuer,
@@ -537,7 +537,7 @@ func claim(network *integration.Infrastructure, recipient string, issuer string,
 	return common.JSONUnmarshalString(txid)
 }
 
-func claimWithError(network *integration.Infrastructure, recipient string, issuer string, originTokenID *token2.ID) {
+func ClaimWithError(network *integration.Infrastructure, recipient string, issuer string, originTokenID *token2.ID) {
 	_, err := network.Client(recipient).CallView("transfer.claim", common.JSONMarshall(&pledge2.Claim{
 		OriginTokenID: originTokenID,
 		Issuer:        issuer,
@@ -545,7 +545,7 @@ func claimWithError(network *integration.Infrastructure, recipient string, issue
 	Expect(err).To(HaveOccurred())
 }
 
-func tmsRedeem(network *integration.Infrastructure, issuer string, tokenID *token2.ID, opts ...token.ServiceOption) string {
+func RedeemWithTMS(network *integration.Infrastructure, issuer string, tokenID *token2.ID, opts ...token.ServiceOption) string {
 	options, err := token.CompileServiceOptions(opts...)
 	Expect(err).NotTo(HaveOccurred())
 	txID, err := network.Client(issuer).CallView("transfer.redeem", common.JSONMarshall(&pledge2.Redeem{
@@ -558,7 +558,7 @@ func tmsRedeem(network *integration.Infrastructure, issuer string, tokenID *toke
 	return common.JSONUnmarshalString(txID)
 }
 
-func tmsRedeemWithError(network *integration.Infrastructure, issuer string, tokenID *token2.ID, opt token.ServiceOption, errorMsgs ...string) {
+func RedeemWithTMSAndError(network *integration.Infrastructure, issuer string, tokenID *token2.ID, opt token.ServiceOption, errorMsgs ...string) {
 	options, err := token.CompileServiceOptions(opt)
 	Expect(err).NotTo(HaveOccurred())
 	_, err = network.Client(issuer).CallView("transfer.redeem", common.JSONMarshall(&pledge2.Redeem{
@@ -571,7 +571,7 @@ func tmsRedeemWithError(network *integration.Infrastructure, issuer string, toke
 	}
 }
 
-func fastTransferPledgeClaim(network *integration.Infrastructure, sender, wallet, typ string, amount uint64, receiver, issuer, destNetwork string, deadline time.Duration, opts ...token.ServiceOption) {
+func FastTransferPledgeClaim(network *integration.Infrastructure, sender, wallet, typ string, amount uint64, receiver, issuer, destNetwork string, deadline time.Duration, opts ...token.ServiceOption) {
 	options, err := token.CompileServiceOptions(opts...)
 	Expect(err).NotTo(HaveOccurred())
 
@@ -588,7 +588,7 @@ func fastTransferPledgeClaim(network *integration.Infrastructure, sender, wallet
 	Expect(err).NotTo(HaveOccurred())
 }
 
-func fastTransferPledgeReclaim(network *integration.Infrastructure, sender, wallet, typ string, amount uint64, receiver, issuer, destNetwork string, deadline time.Duration, opts ...token.ServiceOption) {
+func FastTransferPledgeReclaim(network *integration.Infrastructure, sender, wallet, typ string, amount uint64, receiver, issuer, destNetwork string, deadline time.Duration, opts ...token.ServiceOption) {
 	options, err := token.CompileServiceOptions(opts...)
 	Expect(err).NotTo(HaveOccurred())
 

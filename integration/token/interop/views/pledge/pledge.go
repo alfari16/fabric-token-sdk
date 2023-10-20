@@ -7,8 +7,6 @@ SPDX-License-Identifier: Apache-2.0
 package pledge
 
 import (
-	"crypto/rand"
-	"encoding/hex"
 	"encoding/json"
 	"time"
 
@@ -18,8 +16,12 @@ import (
 	"github.com/hyperledger-labs/fabric-token-sdk/token"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/pledge"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/ttx"
-	"github.com/pkg/errors"
 )
+
+type Result struct {
+	TxID     string
+	PledgeID string
+}
 
 // Pledge contains the input information for a transfer
 type Pledge struct {
@@ -39,8 +41,6 @@ type Pledge struct {
 	DestinationNetworkURL string
 	// ReclamationDeadline is the time after which we can reclaim the funds in case they were not transferred
 	ReclamationDeadline time.Duration
-	// PlegdeID is the unique identifier of the pledge
-	PledgeID string
 }
 
 // View is the view of the initiator of a pledge operation
@@ -48,37 +48,29 @@ type View struct {
 	*Pledge
 }
 
-type Info struct {
-	TxID     string
-	PledgeID string
-}
-
-func (pv *View) Call(context view.Context) (interface{}, error) {
+func (v *View) Call(context view.Context) (interface{}, error) {
 	// Collect recipient's token-sdk identity
-	recipient, err := pledge.RequestPledgeRecipientIdentity(context, pv.Recipient, pv.DestinationNetworkURL, token.WithTMSID(pv.OriginTMSID))
+	recipient, err := pledge.RequestPledgeRecipientIdentity(context, v.Recipient, v.DestinationNetworkURL, token.WithTMSID(v.OriginTMSID))
 	assert.NoError(err, "failed getting recipient identity")
 
 	// Collect issuer's token-sdk identity
 	// TODO: shall we ask for the issuer identity here and not the owner identity?
-	issuer, err := pledge.RequestRecipientIdentity(context, pv.Issuer, token.WithTMSID(pv.OriginTMSID))
+	issuer, err := pledge.RequestRecipientIdentity(context, v.Issuer, token.WithTMSID(v.OriginTMSID))
 	assert.NoError(err, "failed getting recipient identity")
 
 	// Create a new transaction
 	tx, err := pledge.NewAnonymousTransaction(
 		context,
 		ttx.WithAuditor(view2.GetIdentityProvider(context).Identity("auditor")),
-		ttx.WithTMSID(pv.OriginTMSID),
+		ttx.WithTMSID(v.OriginTMSID),
 	)
 	assert.NoError(err, "failed created a new transaction")
 
 	// The sender will select tokens owned by this wallet
-	senderWallet := pledge.GetWallet(context, pv.OriginWallet, token.WithTMSID(pv.OriginTMSID))
-	assert.NotNil(senderWallet, "sender wallet [%s] not found", pv.OriginWallet)
+	senderWallet := pledge.GetWallet(context, v.OriginWallet, token.WithTMSID(v.OriginTMSID))
+	assert.NotNil(senderWallet, "sender wallet [%s] not found", v.OriginWallet)
 
-	pv.PledgeID, err = generatePledgeID()
-	assert.NoError(err, "failed to generate pledge ID")
-
-	err = tx.Pledge(senderWallet, pv.DestinationNetworkURL, pv.ReclamationDeadline, recipient, issuer, pv.PledgeID, pv.Type, pv.Amount)
+	PledgeID, err := tx.Pledge(senderWallet, v.DestinationNetworkURL, v.ReclamationDeadline, recipient, issuer, v.Type, v.Amount)
 	assert.NoError(err, "failed pledging")
 
 	// Collect signatures
@@ -94,17 +86,17 @@ func (pv *View) Call(context view.Context) (interface{}, error) {
 	_, err = context.RunView(pledge.NewDistributePledgeInfoView(tx))
 	assert.NoError(err, "failed to send the pledge info")
 
-	return json.Marshal(&Info{TxID: tx.ID(), PledgeID: pv.PledgeID})
+	return json.Marshal(&Result{TxID: tx.ID(), PledgeID: PledgeID})
 }
 
 type ViewFactory struct{}
 
-func (pvf *ViewFactory) NewView(in []byte) (view.View, error) {
-	f := &View{Pledge: &Pledge{}}
-	err := json.Unmarshal(in, f.Pledge)
+func (f *ViewFactory) NewView(in []byte) (view.View, error) {
+	v := &View{Pledge: &Pledge{}}
+	err := json.Unmarshal(in, v.Pledge)
 	assert.NoError(err, "failed unmarshalling input")
 
-	return f, nil
+	return v, nil
 }
 
 type RecipientResponderView struct{}
@@ -161,23 +153,4 @@ func (p *IssuerResponderView) Call(context view.Context) (interface{}, error) {
 	assert.NoError(err, "new tokens were not committed")
 
 	return nil, nil
-}
-
-// generatePledgeID generates a pledgeID randomly
-func generatePledgeID() (string, error) {
-	nonce, err := getRandomNonce()
-	if err != nil {
-		return "", errors.New("failed generating random nonce for pledgeID")
-	}
-	return hex.EncodeToString(nonce), nil
-}
-
-// getRandomNonce generates a random nonce using the package math/rand
-func getRandomNonce() ([]byte, error) {
-	key := make([]byte, 24)
-	_, err := rand.Read(key)
-	if err != nil {
-		return nil, errors.Wrap(err, "error getting random bytes")
-	}
-	return key, nil
 }

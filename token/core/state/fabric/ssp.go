@@ -23,7 +23,7 @@ const (
 	QueryPublicParamsFunction = "queryPublicParams"
 )
 
-var logger = flogging.MustGetLogger("token-sdk-plu.state")
+var logger = flogging.MustGetLogger("token-sdk.state")
 
 type StateServiceProvider struct {
 	sp             driver.ServiceProvider

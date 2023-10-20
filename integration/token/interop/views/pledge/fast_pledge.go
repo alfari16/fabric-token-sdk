@@ -40,8 +40,6 @@ type FastPledgeClaim struct {
 	DestinationNetworkURL string
 	// ReclamationDeadline is the time after which we can reclaim the funds in case they were not transferred
 	ReclamationDeadline time.Duration
-	// PledgeID is the unique identifier of the pledge
-	PledgeID string
 }
 
 type FastPledgeClaimInitiatorViewFactory struct{}
@@ -75,14 +73,11 @@ func (v *FastPledgeClaimInitiatorView) Call(context view.Context) (interface{}, 
 	)
 	assert.NoError(err, "failed created a new transaction")
 
-	v.PledgeID, err = generatePledgeID()
-	assert.NoError(err, "failed to produce a pledge ID")
-
 	// The sender will select tokens owned by this wallet
 	senderWallet := pledge.GetWallet(context, v.OriginWallet, token.WithTMSID(v.OriginTMSID))
 	assert.NotNil(senderWallet, "sender wallet [%s] not found", v.OriginWallet)
 
-	err = tx.Pledge(senderWallet, v.DestinationNetworkURL, v.ReclamationDeadline, recipient, issuer, v.PledgeID, v.Type, v.Amount)
+	_, err = tx.Pledge(senderWallet, v.DestinationNetworkURL, v.ReclamationDeadline, recipient, issuer, v.Type, v.Amount)
 	assert.NoError(err, "failed pledging")
 
 	// Collect signatures
@@ -263,10 +258,7 @@ func (v *FastPledgeReClaimInitiatorView) Call(context view.Context) (interface{}
 	senderWallet := pledge.GetWallet(context, v.OriginWallet, token.WithTMSID(v.OriginTMSID))
 	assert.NotNil(senderWallet, "sender wallet [%s] not found", v.OriginWallet)
 
-	v.PledgeID, err = generatePledgeID()
-	assert.NoError(err, "failed to generate pledge ID")
-
-	err = tx.Pledge(senderWallet, v.DestinationNetworkURL, v.ReclamationDeadline, recipient, issuer, v.PledgeID, v.Type, v.Amount)
+	_, err = tx.Pledge(senderWallet, v.DestinationNetworkURL, v.ReclamationDeadline, recipient, issuer, v.Type, v.Amount)
 	assert.NoError(err, "failed pledging")
 
 	// Collect signatures

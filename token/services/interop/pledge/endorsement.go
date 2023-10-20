@@ -20,13 +20,11 @@ func NewCollectEndorsementsView(tx *Transaction) view.View {
 }
 
 type ReceiveTransactionView struct {
-	network string
-	channel string
 }
 
 // NewReceiveTransactionView returns an instance of receiveTransactionView struct
-func NewReceiveTransactionView(network string) *ReceiveTransactionView {
-	return &ReceiveTransactionView{network: network}
+func NewReceiveTransactionView() *ReceiveTransactionView {
+	return &ReceiveTransactionView{}
 }
 
 func (f *ReceiveTransactionView) Call(context view.Context) (interface{}, error) {
@@ -38,7 +36,7 @@ func (f *ReceiveTransactionView) Call(context view.Context) (interface{}, error)
 		if msg.Status == view.ERROR {
 			return nil, errors.New(string(msg.Payload))
 		}
-		tx, err := NewTransactionFromBytes(context, f.network, f.channel, msg.Payload)
+		tx, err := NewTransactionFromBytes(context, msg.Payload)
 		if err != nil {
 			return nil, err
 		}
@@ -52,7 +50,7 @@ func (f *ReceiveTransactionView) Call(context view.Context) (interface{}, error)
 func ReceiveTransaction(context view.Context) (*Transaction, error) {
 	logger.Debugf("receive a new transaction...")
 
-	txBoxed, err := context.RunView(NewReceiveTransactionView(""))
+	txBoxed, err := context.RunView(NewReceiveTransactionView())
 	if err != nil {
 		return nil, err
 	}

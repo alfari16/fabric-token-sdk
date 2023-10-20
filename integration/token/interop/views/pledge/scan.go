@@ -45,8 +45,7 @@ func (s *ScanView) Call(context view.Context) (interface{}, error) {
 	return b, nil
 }
 
-type ScanViewFactory struct {
-}
+type ScanViewFactory struct{}
 
 func (s *ScanViewFactory) NewView(in []byte) (view.View, error) {
 	f := &ScanView{Scan: &Scan{}}

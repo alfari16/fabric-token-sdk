@@ -49,6 +49,7 @@ func (c *ClaimInitiatorView) Call(context view.Context) (interface{}, error) {
 	me, err := wallet.GetRecipientIdentity()
 	assert.NoError(err, "failed getting recipient identity from my owner wallet")
 
+	// Contact the issuer, present the pledge proof, and ask to initiate the issue process
 	session, err := pledge.RequestClaim(
 		context,
 		fabric.GetDefaultIdentityProvider(context).Identity(c.Issuer),
@@ -58,6 +59,9 @@ func (c *ClaimInitiatorView) Call(context view.Context) (interface{}, error) {
 	)
 	assert.NoError(err, "failed requesting a claim from the issuer")
 
+	// Now we have an inversion of roles.
+	// The issuer becomes the initiator of the issue transaction,
+	// and this node is the responder
 	return view2.AsResponder(context, session,
 		func(context view.Context) (interface{}, error) {
 			// At some point, the recipient receives the token transaction that in the meantime has been assembled

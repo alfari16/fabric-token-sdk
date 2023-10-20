@@ -8,7 +8,6 @@ package pledge
 
 import (
 	"encoding/json"
-	"fmt"
 	"time"
 
 	view2 "github.com/hyperledger-labs/fabric-smart-client/platform/view"
@@ -22,22 +21,22 @@ import (
 
 func (t *Transaction) Claim(issuerWallet *token.IssuerWallet, typ string, value uint64, recipient view.Identity, originTokenID *token2.ID, originNetwork string, proof []byte) error {
 	if typ == "" {
-		return fmt.Errorf("must specify a type")
+		return errors.Errorf("must specify a type")
 	}
 	if value == 0 {
-		return fmt.Errorf("must specify a value")
+		return errors.Errorf("must specify a value")
 	}
 	if recipient.IsNone() {
-		return fmt.Errorf("must specify a recipient")
+		return errors.Errorf("must specify a recipient")
 	}
 	if originTokenID == nil {
-		return fmt.Errorf("must specify the origin token ID")
+		return errors.Errorf("must specify the origin token ID")
 	}
 	if originNetwork == "" {
-		return fmt.Errorf("must specify the origin network")
+		return errors.Errorf("must specify the origin network")
 	}
 	if proof == nil {
-		return fmt.Errorf("must provide a proof")
+		return errors.Errorf("must provide a proof")
 	}
 
 	_, err := t.TokenRequest.Issue(issuerWallet, recipient, typ, value, WithMetadata(originTokenID, originNetwork, proof))
