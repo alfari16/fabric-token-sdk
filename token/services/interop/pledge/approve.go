@@ -15,6 +15,7 @@ import (
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/session"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
 	tokn "github.com/hyperledger-labs/fabric-token-sdk/token"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/network"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/token"
 	"github.com/pkg/errors"
 )
@@ -215,7 +216,12 @@ func (v *RequestIssuerSignatureResponderView) Call(context view.Context) (interf
 	}
 
 	// verify proof before returning it
-	origin := FabricURL(req.OriginTMSID)
+	net := network.GetInstance(context, req.OriginTMSID.Network, req.OriginTMSID.Channel)
+	if net == nil {
+		return nil, errors.Errorf("cannot find network for [%s]", req.OriginTMSID)
+	}
+	origin := net.InteropURL(req.OriginTMSID.Namespace)
+
 	ssp, err := GetStateServiceProvider(context)
 	if err != nil {
 		return nil, errors.WithMessage(err, "failed getting state service provider")

@@ -9,11 +9,13 @@ package fabric
 import (
 	"encoding/base64"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"github.com/hyperledger-labs/fabric-smart-client/platform/fabric"
 	weaver2 "github.com/hyperledger-labs/fabric-smart-client/platform/fabric/services/weaver"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/flogging"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/core/interop"
 	fabric2 "github.com/hyperledger-labs/fabric-token-sdk/token/core/state/fabric"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/pledge"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/network/fabric/tcc"
@@ -63,7 +65,14 @@ func (p *StateQueryExecutor) Exist(tokenID *token.ID) ([]byte, error) {
 	}
 	res, err := query.Call()
 	if err != nil {
-		return nil, err
+		// todo: move this to the query executor
+		errMsg := err.Error()
+		switch {
+		case strings.Contains(errMsg, "failed to confirm if token with ID"):
+			return nil, errors.WithMessagef(interop.TokenDoesNotExistError, "%s", err)
+		default:
+			return nil, err
+		}
 	}
 
 	return res.Proof()
@@ -89,7 +98,13 @@ func (p *StateQueryExecutor) DoesNotExist(tokenID *token.ID, origin string, dead
 	}
 	res, err := query.Call()
 	if err != nil {
-		return nil, err
+		errMsg := err.Error()
+		switch {
+		case strings.Contains(errMsg, "failed to confirm if token from network"):
+			return nil, errors.WithMessagef(interop.TokenExistsError, "%s", err)
+		default:
+			return nil, err
+		}
 	}
 
 	return res.Proof()
@@ -116,7 +131,13 @@ func (p *StateQueryExecutor) ExistsWithMetadata(tokenID *token.ID, origin string
 	}
 	res, err := query.Call()
 	if err != nil {
-		return nil, err
+		errMsg := err.Error()
+		switch {
+		case strings.Contains(errMsg, "failed to confirm if token from network"):
+			return nil, errors.WithMessagef(interop.TokenExistsError, "%s", err)
+		default:
+			return nil, err
+		}
 	}
 
 	return res.Proof()

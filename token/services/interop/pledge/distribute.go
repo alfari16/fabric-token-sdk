@@ -11,6 +11,7 @@ import (
 
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/session"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/network"
 	token2 "github.com/hyperledger-labs/fabric-token-sdk/token/token"
 	"github.com/pkg/errors"
 )
@@ -77,8 +78,13 @@ func (v *DistributePledgeView) Call(context view.Context) (interface{}, error) {
 		}
 		// TODO: retrieve token's metadata
 
+		tmsID := v.tx.TokenService().ID()
+		net := network.GetInstance(context, tmsID.Network, tmsID.Channel)
+		if net == nil {
+			return nil, errors.Errorf("cannot find network for [%s]", tmsID)
+		}
 		info := &Info{
-			Source:        FabricURL(v.tx.TokenService().ID()),
+			Source:        net.InteropURL(tmsID.Namespace),
 			TokenType:     tokenType,
 			Amount:        amount,
 			TokenID:       tokenID,

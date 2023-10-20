@@ -9,6 +9,7 @@ package pledge
 import (
 	"time"
 
+	token2 "github.com/hyperledger-labs/fabric-token-sdk/token"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/driver"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/token"
 	"github.com/pkg/errors"
@@ -105,6 +106,10 @@ func (p *StateServiceProvider) Verifier(url string) (*StateVerifier, error) {
 	return &StateVerifier{
 		v: verifier,
 	}, nil
+}
+
+func (p *StateServiceProvider) URLToTMSID(url string) (token2.TMSID, error) {
+	return p.p.URLToTMSID(url)
 }
 
 // GetStateServiceProvider returns an instance of a state service provider

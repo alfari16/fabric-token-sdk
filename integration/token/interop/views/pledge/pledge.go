@@ -70,7 +70,7 @@ func (v *View) Call(context view.Context) (interface{}, error) {
 	senderWallet := pledge.GetWallet(context, v.OriginWallet, token.WithTMSID(v.OriginTMSID))
 	assert.NotNil(senderWallet, "sender wallet [%s] not found", v.OriginWallet)
 
-	PledgeID, err := tx.Pledge(senderWallet, v.DestinationNetworkURL, v.ReclamationDeadline, recipient, issuer, v.Type, v.Amount)
+	pledgeID, err := tx.Pledge(senderWallet, v.DestinationNetworkURL, v.ReclamationDeadline, recipient, issuer, v.Type, v.Amount)
 	assert.NoError(err, "failed pledging")
 
 	// Collect signatures
@@ -86,7 +86,7 @@ func (v *View) Call(context view.Context) (interface{}, error) {
 	_, err = context.RunView(pledge.NewDistributePledgeInfoView(tx))
 	assert.NoError(err, "failed to send the pledge info")
 
-	return json.Marshal(&Result{TxID: tx.ID(), PledgeID: PledgeID})
+	return json.Marshal(&Result{TxID: tx.ID(), PledgeID: pledgeID})
 }
 
 type ViewFactory struct{}

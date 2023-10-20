@@ -11,6 +11,7 @@ import (
 	"sync"
 
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/core/interop/fabric"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/driver"
 	"github.com/pkg/errors"
 )
@@ -35,21 +36,21 @@ func RegisterSSPDriver(name string, driver driver.SSPDriver) {
 	sspDriver[name] = driver
 }
 
-type stateServiceProvider struct {
+type StateServiceProvider struct {
 	sp view.ServiceProvider
 
 	sspsMu sync.RWMutex
 	ssps   map[string]driver.StateServiceProvider
 }
 
-func NewStateServiceProvider(sp view.ServiceProvider) *stateServiceProvider {
-	return &stateServiceProvider{
+func NewStateServiceProvider(sp view.ServiceProvider) *StateServiceProvider {
+	return &StateServiceProvider{
 		sp:   sp,
 		ssps: map[string]driver.StateServiceProvider{},
 	}
 }
 
-func (p *stateServiceProvider) QueryExecutor(url string) (driver.StateQueryExecutor, error) {
+func (p *StateServiceProvider) QueryExecutor(url string) (driver.StateQueryExecutor, error) {
 	ssp, err := p.ssp(url)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "failed to get ssp for url [%s]", url)
@@ -57,7 +58,7 @@ func (p *stateServiceProvider) QueryExecutor(url string) (driver.StateQueryExecu
 	return ssp.QueryExecutor(url)
 }
 
-func (p *stateServiceProvider) Verifier(url string) (driver.StateVerifier, error) {
+func (p *StateServiceProvider) Verifier(url string) (driver.StateVerifier, error) {
 	ssp, err := p.ssp(url)
 	if err != nil {
 		return nil, errors.WithMessagef(err, "failed to get ssp for url [%s]", url)
@@ -65,7 +66,11 @@ func (p *stateServiceProvider) Verifier(url string) (driver.StateVerifier, error
 	return ssp.Verifier(url)
 }
 
-func (p *stateServiceProvider) ssp(url string) (driver.StateServiceProvider, error) {
+func (p *StateServiceProvider) URLToTMSID(url string) (driver.TMSID, error) {
+	return fabric.FabricURLToTMSID(url)
+}
+
+func (p *StateServiceProvider) ssp(url string) (driver.StateServiceProvider, error) {
 	p.sspsMu.Lock()
 	defer p.sspsMu.Unlock()
 

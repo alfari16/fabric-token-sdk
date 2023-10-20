@@ -123,6 +123,11 @@ func (f *StateServiceProvider) Verifier(url string) (driver.StateVerifier, error
 	return v, nil
 }
 
+func (f *StateServiceProvider) URLToTMSID(url string) (driver.TMSID, error) {
+	//TODO implement me
+	panic("implement me")
+}
+
 func (f *StateServiceProvider) fetchPublicParameters(url string) ([]byte, error) {
 	relay := weaver2.GetProvider(f.sp).Relay(fabric.GetDefaultFNS(f.sp))
 	logger.Debugf("Query [%s] for the public parameters", url)

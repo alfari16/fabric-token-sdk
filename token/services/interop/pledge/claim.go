@@ -14,6 +14,7 @@ import (
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/session"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
 	"github.com/hyperledger-labs/fabric-token-sdk/token"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/network"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/ttx"
 	token2 "github.com/hyperledger-labs/fabric-token-sdk/token/token"
 	"github.com/pkg/errors"
@@ -214,7 +215,14 @@ func ValidateClaimRequest(context view.Context, req *ClaimRequest, opts ...ttx.T
 	if tms == nil {
 		return errors.Errorf("cannot find tms for [%s]", txOpts.TMSID())
 	}
-	destination := FabricURL(tms.ID())
+
+	tmsID := tms.ID()
+	net := network.GetInstance(context, tmsID.Network, tmsID.Channel)
+	if net == nil {
+		return errors.Errorf("cannot find network for [%s]", tmsID)
+	}
+	destination := net.InteropURL(tmsID.Namespace)
+
 	info := &Info{
 		Amount:        req.Quantity,
 		TokenID:       req.OriginTokenID,
