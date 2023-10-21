@@ -13,7 +13,6 @@ import (
 	math "github.com/IBM/mathlib"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/flogging"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/hash"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/core/zkatdlog/crypto/common"
 	issue2 "github.com/hyperledger-labs/fabric-token-sdk/token/core/zkatdlog/crypto/issue"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/core/zkatdlog/crypto/token"
@@ -22,6 +21,7 @@ import (
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/htlc"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/pledge"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 	"github.com/pkg/errors"
 )
 
@@ -258,11 +258,11 @@ func InspectTokenOwner(des Deserializer, token *AuditableToken, index int) error
 	if len(token.Owner.OwnerInfo) == 0 {
 		return errors.Errorf("failed to inspect owner at index [%d]: owner info is nil", index)
 	}
-	ro, err := identity.UnmarshallRawOwner(token.Token.Owner)
+	ro, err := owner.UnmarshallTypedIdentity(token.Token.Owner)
 	if err != nil {
 		return errors.Errorf("owner at index [%d] cannot be unwrapped", index)
 	}
-	if ro.Type == identity.SerializedIdentityType {
+	if ro.Type == owner.SerializedIdentityType {
 		matcher, err := des.GetOwnerMatcher(token.Owner.OwnerInfo)
 		if err != nil {
 			return errors.Errorf("failed to get owner matcher for output [%d]", index)
@@ -276,7 +276,7 @@ func InspectTokenOwner(des Deserializer, token *AuditableToken, index int) error
 }
 
 func inspectTokenOwnerOfScript(des Deserializer, token *AuditableToken, index int) error {
-	owner, err := identity.UnmarshallRawOwner(token.Token.Owner)
+	identity, err := owner.UnmarshallTypedIdentity(token.Token.Owner)
 	if err != nil {
 		return errors.Errorf("input owner at index [%d] cannot be unmarshalled", index)
 	}
@@ -284,17 +284,17 @@ func inspectTokenOwnerOfScript(des Deserializer, token *AuditableToken, index in
 	if err := json.Unmarshal(token.Owner.OwnerInfo, scriptInf); err != nil {
 		return errors.Wrapf(err, "failed to unmarshal script info")
 	}
-	scriptSender, scriptRecipient, scriptIssuer, err := interop.GetScriptSenderAndRecipient(owner)
+	scriptSender, scriptRecipient, scriptIssuer, err := interop.GetScriptSenderAndRecipient(identity)
 	if err != nil {
 		return errors.Wrap(err, "failed getting script sender and recipient")
 	}
 
-	if owner.Type == htlc.ScriptType {
+	if identity.Type == htlc.ScriptType {
 		sender, err := des.GetOwnerMatcher(scriptInf.Sender)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get owner matcher from htlc script sender [%s]", string(scriptInf.Sender))
 		}
-		ro, err := identity.UnmarshallRawOwner(scriptSender)
+		ro, err := owner.UnmarshallTypedIdentity(scriptSender)
 		if err != nil {
 			return errors.Wrapf(err, "failed to retrieve raw owner from sender in htlc script")
 		}
@@ -306,7 +306,7 @@ func inspectTokenOwnerOfScript(des Deserializer, token *AuditableToken, index in
 		if err != nil {
 			return errors.Wrapf(err, "failed to unmarshal audit info from script recipient [%s]", string(scriptInf.Recipient))
 		}
-		ro, err = identity.UnmarshallRawOwner(scriptRecipient)
+		ro, err = owner.UnmarshallTypedIdentity(scriptRecipient)
 		if err != nil {
 			return errors.Wrapf(err, "failed to retrieve raw owner from recipien in script")
 		}
@@ -315,12 +315,12 @@ func inspectTokenOwnerOfScript(des Deserializer, token *AuditableToken, index in
 		}
 	}
 
-	if owner.Type == pledge.ScriptType {
+	if identity.Type == pledge.ScriptType {
 		sender, err := des.GetOwnerMatcher(scriptInf.Sender)
 		if err != nil {
 			return errors.Wrapf(err, "failed to get owner matcher from pledge script sender [%s]", string(scriptInf.Sender))
 		}
-		ro, err := identity.UnmarshallRawOwner(scriptSender)
+		ro, err := owner.UnmarshallTypedIdentity(scriptSender)
 		if err != nil {
 			return errors.Wrapf(err, "failed to retrieve raw owner from sender in pledge script")
 		}
@@ -328,7 +328,7 @@ func inspectTokenOwnerOfScript(des Deserializer, token *AuditableToken, index in
 		// If this is a redeem, match it against the issuer.
 		if err := sender.Match(ro.Identity); err != nil {
 			// Check if this can be matched to the issuer
-			ro, err := identity.UnmarshallRawOwner(scriptIssuer)
+			ro, err := owner.UnmarshallTypedIdentity(scriptIssuer)
 			if err != nil {
 				return errors.Wrapf(err, "failed to retrieve raw owner from issuer in pledge script")
 			}

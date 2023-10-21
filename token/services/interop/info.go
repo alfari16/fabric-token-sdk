@@ -10,9 +10,9 @@ import (
 	"encoding/json"
 
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/htlc"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/pledge"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 	"github.com/pkg/errors"
 )
 
@@ -27,11 +27,11 @@ func GetOwnerAuditInfo(raw []byte, s AuditInfoProvider) ([]byte, error) {
 		return nil, nil
 	}
 
-	owner, err := identity.UnmarshallRawOwner(raw)
+	identity, err := owner.UnmarshallTypedIdentity(raw)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to unmarshal owner")
 	}
-	if owner.Type == identity.SerializedIdentityType {
+	if identity.Type == owner.SerializedIdentityType {
 		auditInfo, err := s.GetAuditInfo(raw)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed getting audit info for identity [%s]", view.Identity(raw).String())
@@ -39,14 +39,14 @@ func GetOwnerAuditInfo(raw []byte, s AuditInfoProvider) ([]byte, error) {
 		return auditInfo, nil
 	}
 
-	sender, recipient, issuer, err := GetScriptSenderAndRecipient(owner)
+	sender, recipient, issuer, err := GetScriptSenderAndRecipient(identity)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed getting script sender and recipient")
 	}
 
 	auditInfo := &ScriptInfo{}
 
-	if owner.Type == htlc.ScriptType {
+	if identity.Type == htlc.ScriptType {
 		auditInfo.Sender, err = s.GetAuditInfo(sender)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed getting audit info for sender of htlc script [%s]", view.Identity(raw).String())
@@ -58,7 +58,7 @@ func GetOwnerAuditInfo(raw []byte, s AuditInfoProvider) ([]byte, error) {
 		}
 	}
 
-	if owner.Type == pledge.ScriptType {
+	if identity.Type == pledge.ScriptType {
 		auditInfo.Sender, err = s.GetAuditInfo(sender)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed getting audit info for sender of pledge script [%s]", view.Identity(raw).String())
@@ -96,7 +96,7 @@ type ScriptInfo struct {
 }
 
 // GetScriptSenderAndRecipient returns the script's sender, recipient, and issuer, according to the type of the given owner
-func GetScriptSenderAndRecipient(ro *identity.RawOwner) (sender, recipient, issuer view.Identity, err error) {
+func GetScriptSenderAndRecipient(ro *owner.TypedIdentity) (sender, recipient, issuer view.Identity, err error) {
 	if ro.Type == htlc.ScriptType {
 		script := &htlc.Script{}
 		err = json.Unmarshal(ro.Identity, script)

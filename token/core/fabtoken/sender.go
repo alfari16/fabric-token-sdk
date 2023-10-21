@@ -9,11 +9,11 @@ package fabtoken
 import (
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/core/common"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/driver"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/htlc"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/pledge"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/token"
 	"github.com/pkg/errors"
 )
@@ -67,27 +67,27 @@ func (s *Service) Transfer(txID string, wallet driver.OwnerWallet, ids []*token.
 			receivers = append(receivers, output.Output.Owner.Raw)
 			continue
 		}
-		owner, err := identity.UnmarshallRawOwner(output.Output.Owner.Raw)
+		identity, err := owner.UnmarshallTypedIdentity(output.Output.Owner.Raw)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "failed to unmarshal owner of input token")
 		}
-		if owner.Type == identity.SerializedIdentityType {
+		if identity.Type == owner.SerializedIdentityType {
 			receivers = append(receivers, output.Output.Owner.Raw)
 			continue
 		}
-		_, recipient, issuer, err := interop.GetScriptSenderAndRecipient(owner)
+		_, recipient, issuer, err := interop.GetScriptSenderAndRecipient(identity)
 		if err != nil {
 			return nil, nil, errors.Wrap(err, "failed getting script sender and recipient")
 		}
-		if owner.Type == htlc.ScriptType {
+		if identity.Type == htlc.ScriptType {
 			receivers = append(receivers, recipient)
 			continue
 		}
-		if owner.Type == pledge.ScriptType {
+		if identity.Type == pledge.ScriptType {
 			receivers = append(receivers, issuer)
 			continue
 		}
-		return nil, nil, errors.Errorf("owner's type not recognized [%s]", owner.Type)
+		return nil, nil, errors.Errorf("owner's type not recognized [%s]", identity.Type)
 	}
 
 	var senderAuditInfos [][]byte

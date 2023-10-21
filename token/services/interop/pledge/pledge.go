@@ -14,7 +14,7 @@ import (
 
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
 	"github.com/hyperledger-labs/fabric-token-sdk/token"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 	"github.com/pkg/errors"
 )
 
@@ -66,11 +66,11 @@ func (t *Transaction) recipientAsScript(sender view.Identity, destNetwork string
 		return nil, err
 	}
 
-	ro := &identity.RawOwner{
+	ro := &owner.TypedIdentity{
 		Type:     ScriptType,
 		Identity: rawScript,
 	}
-	return identity.MarshallRawOwner(ro)
+	return owner.MarshallTypedIdentity(ro)
 }
 
 // generatePledgeID generates a pledgeID randomly

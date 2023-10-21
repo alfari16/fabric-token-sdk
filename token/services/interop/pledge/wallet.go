@@ -12,8 +12,8 @@ import (
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view"
 	view2 "github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
 	"github.com/hyperledger-labs/fabric-token-sdk/token"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/network"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 	token2 "github.com/hyperledger-labs/fabric-token-sdk/token/token"
 	"github.com/pkg/errors"
 )
@@ -127,7 +127,7 @@ func retrievePledgedToken(unspentTokens *token2.UnspentTokens, tokenID *token2.I
 	var scripts []*Script
 	for _, tok := range unspentTokens.Tokens {
 		if tok.Id.String() == tokenID.String() {
-			owner, err := identity.UnmarshallRawOwner(tok.Owner.Raw)
+			owner, err := owner.UnmarshallTypedIdentity(tok.Owner.Raw)
 			if err != nil {
 				return nil, nil, errors.Wrapf(err, "failed to unmarshal owner")
 			}
@@ -157,7 +157,7 @@ func (s *ScriptOwnership) AmIAnAuditor(tms *token.ManagementService) bool {
 }
 
 func (s *ScriptOwnership) IsMine(tms *token.ManagementService, tok *token2.Token) ([]string, bool) {
-	owner, err := identity.UnmarshallRawOwner(tok.Owner.Raw)
+	owner, err := owner.UnmarshallTypedIdentity(tok.Owner.Raw)
 	if err != nil {
 		logger.Debugf("Is Mine [%s,%s,%s]? No, failed unmarshalling [%s]", view2.Identity(tok.Owner.Raw), tok.Type, tok.Quantity, err)
 		return nil, false

@@ -13,7 +13,7 @@ import (
 	view2 "github.com/hyperledger-labs/fabric-smart-client/platform/view"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
 	"github.com/hyperledger-labs/fabric-token-sdk/token"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 	token2 "github.com/hyperledger-labs/fabric-token-sdk/token/token"
 	"github.com/pkg/errors"
 )
@@ -35,7 +35,7 @@ func (t *Transaction) Reclaim(wallet *token.OwnerWallet, tok *token2.UnspentToke
 		return errors.Wrapf(err, "failed to convert quantity [%s]", tok.Quantity)
 	}
 
-	owner, err := identity.UnmarshallRawOwner(tok.Owner.Raw)
+	owner, err := owner.UnmarshallTypedIdentity(tok.Owner.Raw)
 	if err != nil {
 		return err
 	}
@@ -47,7 +47,7 @@ func (t *Transaction) Reclaim(wallet *token.OwnerWallet, tok *token2.UnspentToke
 	script := &Script{}
 	err = json.Unmarshal(owner.Identity, script)
 	if err != nil {
-		return errors.Errorf("failed to unmarshal RawOwner as a pledge script")
+		return errors.Errorf("failed to unmarshal TypedIdentity as a pledge script")
 	}
 
 	// Register the signer for the reclaim

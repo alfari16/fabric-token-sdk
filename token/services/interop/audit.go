@@ -10,9 +10,9 @@ import (
 	"encoding/json"
 
 	"github.com/hyperledger-labs/fabric-token-sdk/token"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/htlc"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/pledge"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 	"github.com/pkg/errors"
 )
 
@@ -23,7 +23,7 @@ type Input struct {
 }
 
 func ToInput(i *token.Input) (*Input, error) {
-	owner, err := identity.UnmarshallRawOwner(i.Owner)
+	owner, err := owner.UnmarshallTypedIdentity(i.Owner)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal owner")
 	}
@@ -46,7 +46,7 @@ func (i *Input) HTLC() (*htlc.Script, error) {
 	if !i.isHTLC {
 		return nil, errors.New("this input does not refer to an HTLC script")
 	}
-	owner, err := identity.UnmarshallRawOwner(i.Owner)
+	owner, err := owner.UnmarshallTypedIdentity(i.Owner)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal owner")
 	}
@@ -62,7 +62,7 @@ func (i *Input) Pledge() (*pledge.Script, error) {
 	if !i.isPledge {
 		return nil, errors.New("this input does not refer to a pledge script")
 	}
-	owner, err := identity.UnmarshallRawOwner(i.Owner)
+	owner, err := owner.UnmarshallTypedIdentity(i.Owner)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal owner")
 	}
@@ -82,7 +82,7 @@ type Output struct {
 
 func ToOutput(o *token.Output) (*Output, error) {
 	if o.Owner != nil {
-		owner, err := identity.UnmarshallRawOwner(o.Owner)
+		owner, err := owner.UnmarshallTypedIdentity(o.Owner)
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to unmarshal owner")
 		}
@@ -110,7 +110,7 @@ func (o *Output) HTLC() (*htlc.Script, error) {
 	if !o.isHTLC {
 		return nil, errors.New("this output does not refer to an HTLC script")
 	}
-	owner, err := identity.UnmarshallRawOwner(o.Owner)
+	owner, err := owner.UnmarshallTypedIdentity(o.Owner)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal owner")
 	}
@@ -126,7 +126,7 @@ func (o *Output) Pledge() (*pledge.Script, error) {
 	if !o.isPledge {
 		return nil, errors.New("this output does not refer to a pledge script")
 	}
-	owner, err := identity.UnmarshallRawOwner(o.Owner)
+	owner, err := owner.UnmarshallTypedIdentity(o.Owner)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to unmarshal owner")
 	}

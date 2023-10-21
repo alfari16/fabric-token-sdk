@@ -13,7 +13,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
+
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/pledge"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/vault/keys"
 	"github.com/pkg/errors"
@@ -22,17 +23,17 @@ import (
 func TransferPledgeValidate(ctx *Context) error {
 	logger.Debug("pledge validation starts")
 	for _, in := range ctx.InputTokens {
-		owner, err := identity.UnmarshallRawOwner(in.Owner.Raw)
+		identity, err := owner.UnmarshallTypedIdentity(in.Owner.Raw)
 		if err != nil {
 			return errors.Wrap(err, "failed to unmarshal owner of input token")
 		}
-		if owner.Type == pledge.ScriptType {
+		if identity.Type == pledge.ScriptType {
 			if len(ctx.InputTokens) != 1 || len(ctx.Action.GetOutputs()) != 1 {
 				return errors.Errorf("invalid transfer action: a pledge script only transfers the ownership of a token")
 			}
 			out := ctx.Action.GetOutputs()[0].(*Output)
 			tok := out.Output
-			sender, err := identity.UnmarshallRawOwner(ctx.InputTokens[0].Owner.Raw)
+			sender, err := owner.UnmarshallTypedIdentity(ctx.InputTokens[0].Owner.Raw)
 			if err != nil {
 				return err
 			}
@@ -86,7 +87,7 @@ func TransferPledgeValidate(ctx *Context) error {
 		if out.IsRedeem() {
 			continue
 		}
-		owner, err := identity.UnmarshallRawOwner(out.Output.Owner.Raw)
+		owner, err := owner.UnmarshallTypedIdentity(out.Output.Owner.Raw)
 		if err != nil {
 			return err
 		}

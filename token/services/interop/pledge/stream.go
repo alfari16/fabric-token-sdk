@@ -11,7 +11,7 @@ import (
 
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
 	"github.com/hyperledger-labs/fabric-token-sdk/token"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 )
 
 type OutputStream struct {
@@ -40,7 +40,7 @@ func (o *OutputStream) ByType(typ string) *OutputStream {
 
 func (o *OutputStream) ByScript() *OutputStream {
 	return o.Filter(func(t *token.Output) bool {
-		owner, err := identity.UnmarshallRawOwner(t.Owner)
+		owner, err := owner.UnmarshallTypedIdentity(t.Owner)
 		if err != nil {
 			return false
 		}
@@ -50,7 +50,7 @@ func (o *OutputStream) ByScript() *OutputStream {
 
 func (o *OutputStream) ScriptAt(i int) *Script {
 	tok := o.OutputStream.At(i)
-	owner, err := identity.UnmarshallRawOwner(tok.Owner)
+	owner, err := owner.UnmarshallTypedIdentity(tok.Owner)
 	if err != nil {
 		logger.Debugf("failed unmarshalling raw owner [%s]: [%s]", tok, err)
 		return nil

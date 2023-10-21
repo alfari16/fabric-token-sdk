@@ -11,7 +11,7 @@ import (
 	"encoding/json"
 	"time"
 
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 	"github.com/pkg/errors"
 )
 
@@ -29,7 +29,7 @@ type Action interface {
 
 // VerifyOwner validates the owners of the transfer in the htlc script
 func VerifyOwner(senderRawOwner []byte, outRawOwner []byte, now time.Time) (*Script, OperationType, error) {
-	sender, err := identity.UnmarshallRawOwner(senderRawOwner)
+	sender, err := owner.UnmarshallTypedIdentity(senderRawOwner)
 	if err != nil {
 		return nil, None, err
 	}

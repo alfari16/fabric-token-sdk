@@ -10,10 +10,10 @@ import (
 	"encoding/json"
 
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity/msp/x509"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/driver"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 	"github.com/pkg/errors"
 )
 
@@ -36,7 +36,7 @@ func NewDeserializer() *Deserializer {
 	return &Deserializer{
 		auditorDeserializer: &x509.MSPIdentityDeserializer{},
 		issuerDeserializer:  &x509.MSPIdentityDeserializer{},
-		ownerDeserializer:   interop.NewDeserializer(identity.NewRawOwnerIdentityDeserializer(&x509.MSPIdentityDeserializer{})),
+		ownerDeserializer:   interop.NewDeserializer(owner.NewTypedIdentityDeserializer(&x509.MSPIdentityDeserializer{})),
 	}
 }
 

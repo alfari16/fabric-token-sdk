@@ -15,10 +15,10 @@ import (
 	"github.com/hyperledger-labs/fabric-smart-client/platform/fabric"
 	weaver2 "github.com/hyperledger-labs/fabric-smart-client/platform/fabric/services/weaver"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/flogging"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
 	fabric2 "github.com/hyperledger-labs/fabric-token-sdk/token/core/state/fabric"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/pledge"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/network/fabric/tcc"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/owner"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/vault/keys"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/vault/translator"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/token"
@@ -235,7 +235,7 @@ func (v *StateVerifier) VerifyProofExistence(proofRaw []byte, tokenID *token.ID,
 	if expectedQ.Cmp(q) != 0 {
 		return errors.Errorf("quantity in pledged token is different from quantity in claim request")
 	}
-	owner, err := identity.UnmarshallRawOwner(tok.Owner.Raw)
+	owner, err := owner.UnmarshallTypedIdentity(tok.Owner.Raw)
 	if err != nil {
 		return err
 	}
