@@ -16,7 +16,6 @@ import (
 	weaver2 "github.com/hyperledger-labs/fabric-smart-client/platform/fabric/services/weaver"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/flogging"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/core/identity"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/interop"
 	fabric2 "github.com/hyperledger-labs/fabric-token-sdk/token/core/state/fabric"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/pledge"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/network/fabric/tcc"
@@ -72,7 +71,7 @@ func (p *StateQueryExecutor) Exist(tokenID *token.ID) ([]byte, error) {
 		errMsg := err.Error()
 		switch {
 		case strings.Contains(errMsg, "failed to confirm if token with ID"):
-			return nil, errors.WithMessagef(interop.TokenDoesNotExistError, "%s", err)
+			return nil, errors.WithMessagef(pledge.TokenDoesNotExistError, "%s", err)
 		default:
 			return nil, err
 		}
@@ -106,7 +105,7 @@ func (p *StateQueryExecutor) DoesNotExist(tokenID *token.ID, origin string, dead
 		errMsg := err.Error()
 		switch {
 		case strings.Contains(errMsg, "failed to confirm if token from network"):
-			return nil, errors.WithMessagef(interop.TokenExistsError, "%s", err)
+			return nil, errors.WithMessagef(pledge.TokenExistsError, "%s", err)
 		default:
 			return nil, err
 		}
@@ -141,7 +140,7 @@ func (p *StateQueryExecutor) ExistsWithMetadata(tokenID *token.ID, origin string
 		errMsg := err.Error()
 		switch {
 		case strings.Contains(errMsg, "failed to confirm if token from network"):
-			return nil, errors.WithMessagef(interop.TokenExistsError, "%s", err)
+			return nil, errors.WithMessagef(pledge.TokenExistsError, "%s", err)
 		default:
 			return nil, err
 		}

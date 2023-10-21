@@ -11,8 +11,8 @@ import (
 	"sync"
 
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view"
-	"github.com/hyperledger-labs/fabric-token-sdk/token/core/interop/fabric"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/driver"
+	"github.com/hyperledger-labs/fabric-token-sdk/token/services/interop/fabric"
 	"github.com/pkg/errors"
 )
 
