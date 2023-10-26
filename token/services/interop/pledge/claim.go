@@ -72,10 +72,6 @@ func (cr *ClaimRequest) Bytes() ([]byte, error) {
 	return json.Marshal(cr)
 }
 
-func (cr *ClaimRequest) FromBytes(raw []byte) error {
-	return json.Unmarshal(raw, cr)
-}
-
 type claimInitiatorView struct {
 	issuer      view.Identity
 	recipient   view.Identity
@@ -156,21 +152,16 @@ func ReceiveClaimRequest(context view.Context) (*ClaimRequest, error) {
 }
 
 func (v *receiveClaimRequestView) Call(context view.Context) (interface{}, error) {
-	session, payload, err := session.ReadFirstMessage(context)
-	if err != nil {
-		return nil, err
-	}
+	s := session.JSON(context)
 	req := &ClaimRequest{}
-	if err := req.FromBytes(payload); err != nil {
+	if err := s.Receive(&req); err != nil {
 		return nil, errors.Wrapf(err, "failed unmarshalling claim request")
 	}
-	// todo check that req.RecipientAuditInfo matches recipient in token in the pledge proof
 	tms := token.GetManagementService(context)
 	verifier, err := tms.SigService().OwnerVerifier(req.Recipient)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to retrieve a verifier to check sender signature [%s]", req.Recipient)
 	}
-
 	request := &ClaimRequest{
 		TokenType:          req.TokenType,
 		Quantity:           req.Quantity,
@@ -185,13 +176,13 @@ func (v *receiveClaimRequestView) Call(context view.Context) (interface{}, error
 	if err != nil {
 		return nil, err
 	}
-	err = verifier.Verify(append(toBeVerified, session.Info().Caller.Bytes()...), req.RequestorSignature)
+	err = verifier.Verify(append(toBeVerified, s.Session().Info().Caller.Bytes()...), req.RequestorSignature)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to verify claim request signature")
 	}
 
 	if err := view2.GetEndpointService(context).Bind(
-		session.Info().Caller,
+		s.Session().Info().Caller,
 		req.Recipient,
 	); err != nil {
 		return nil, errors.Wrapf(err, "failed binding caller's identity to request's recipient")

@@ -157,17 +157,17 @@ func (s *ScriptOwnership) AmIAnAuditor(tms *token.ManagementService) bool {
 }
 
 func (s *ScriptOwnership) IsMine(tms *token.ManagementService, tok *token2.Token) ([]string, bool) {
-	owner, err := owner.UnmarshallTypedIdentity(tok.Owner.Raw)
+	identity, err := owner.UnmarshallTypedIdentity(tok.Owner.Raw)
 	if err != nil {
 		logger.Debugf("Is Mine [%s,%s,%s]? No, failed unmarshalling [%s]", view2.Identity(tok.Owner.Raw), tok.Type, tok.Quantity, err)
 		return nil, false
 	}
-	if owner.Type != ScriptType {
+	if identity.Type != ScriptType {
 		return nil, false
 	}
 
 	script := &Script{}
-	if err := json.Unmarshal(owner.Identity, script); err != nil {
+	if err := json.Unmarshal(identity.Identity, script); err != nil {
 		logger.Debugf("Is Mine [%s,%s,%s]? No, failed unmarshalling [%s]", view2.Identity(tok.Owner.Raw), tok.Type, tok.Quantity, err)
 		return nil, false
 	}
