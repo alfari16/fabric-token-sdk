@@ -1,6 +1,7 @@
 package main
 
 import (
+	service2 "github.com/hyperledger/fabric-samples/token-sdk/owner/service"
 	"net/http"
 	"os"
 	"os/signal"
@@ -23,7 +24,8 @@ func main() {
 	port := getEnv("PORT", "9100")
 
 	fsc := startFabricSmartClient(dir)
-	controller := routes.Controller{Service: service.TokenService{FSC: fsc}}
+	balanceService := service2.TokenService{FSC: fsc}
+	controller := routes.Controller{Service: service.TokenService{FSC: fsc, BS: balanceService}}
 	err := routes.StartWebServer(port, controller, logger)
 	if err != nil {
 		if err == http.ErrServerClosed {

@@ -82,6 +82,52 @@ paths:
       operationId: issue
       summary: Issue tokens of any kind to an account
 
+  /harvest:
+    servers:
+      - url: http://localhost:9100/api/v1/
+        description: issuer
+    summary: Harvest the pond and collect tokens
+    post:
+      tags:
+        - issuer
+      responses:
+        "200":
+          $ref: "#/components/responses/IssueSuccess"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+      requestBody:
+        description: Instructions to issue funds to an account
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferRequest"
+      operationId: harvest
+      summary: Harvest the pond and collect tokens
+
+  /request-kabayan:
+    servers:
+      - url: http://localhost:9100/api/v1/
+        description: issuer
+    summary: Request token for kabayan
+    post:
+      tags:
+        - issuer
+      responses:
+        "200":
+          $ref: "#/components/responses/IssueSuccess"
+        default:
+          $ref: "#/components/responses/ErrorResponse"
+      requestBody:
+        description: Instructions to issue funds to an account
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/TransferRequest"
+      operationId: kabayan
+      summary: Request token for kabayan
+
   # Owner
   /owner/accounts:
     servers:

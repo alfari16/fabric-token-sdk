@@ -7,25 +7,34 @@ SPDX-License-Identifier: Apache-2.0
 package service
 
 import (
+	"fmt"
 	"github.com/hyperledger-labs/fabric-smart-client/pkg/api"
 	viewregistry "github.com/hyperledger-labs/fabric-smart-client/platform/view"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/flogging"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/view"
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/ttx"
+	"github.com/hyperledger/fabric-samples/token-sdk/owner/service"
 	"github.com/pkg/errors"
+	"math"
 )
 
 var logger = flogging.MustGetLogger("service")
 
 // SERVICE
 
+type BalanceService interface {
+	GetBalance(wallet string, tokenType string) (typeVal service.ValueByTokenType, err error)
+	RedeemTokens(tokenType string, quantity uint64, wallet string, message string) (txID string, err error)
+}
+
 type TokenService struct {
 	FSC api.ServiceProvider
+	BS  BalanceService
 }
 
 // Issue issues an amount of tokens to a wallet. It connects to the other node, prepares the transaction,
 // gets it approved by the auditor and sends it to the blockchain for endorsement and commit.
-func (s TokenService) Issue(tokenType string, quantity uint64, recipient string, recipientNode string, message string) (txID string, err error) {
+func (s TokenService) Issue(tokenType string, quantity uint64, recipient string, recipientNode string, message string) (txID string, qty uint64, err error) {
 	logger.Infof("going to issue %d %s to [%s] on [%s] with message [%s]", quantity, tokenType, recipient, recipientNode, message)
 	res, err := viewregistry.GetManager(s.FSC).InitiateView(&IssueCashView{
 		IssueCash: &IssueCash{
@@ -42,10 +51,35 @@ func (s TokenService) Issue(tokenType string, quantity uint64, recipient string,
 	}
 	txID, ok := res.(string)
 	if !ok {
-		return "", errors.New("cannot parse issue response")
+		return "", 0, errors.New("cannot parse issue response")
 	}
+
+	const kbyBalance = "KBY"
+	const idrBalance = "IDR"
+
+	if tokenType == idrBalance {
+		logger.Infof("recipt %s kbyBalance %s", recipient, kbyBalance)
+		balance, err := s.BS.GetBalance(recipient, kbyBalance)
+		if err != nil {
+			return "", 0, fmt.Errorf("cannot get kabayan balance response: %w", err)
+		}
+
+		kby, ok := balance[kbyBalance]
+		if ok && kby > 0 {
+			quantity = uint64(math.Min(float64(kby), float64(quantity)))
+			_, err := s.BS.RedeemTokens(kbyBalance, quantity, recipient, "kabayan payment")
+			if err != nil {
+				return "", 0, fmt.Errorf("cannot redeem kabayan balance: %w", err)
+			}
+			_, err = s.BS.RedeemTokens(idrBalance, quantity, recipient, "kabayan payment")
+			if err != nil {
+				return "", 0, fmt.Errorf("cannot redeem idr balance: %w", err)
+			}
+		}
+	}
+
 	logger.Infof("issued %d %s to [%s] on [%s] with message [%s]. ID: [%s]", quantity, tokenType, recipient, recipientNode, message, txID)
-	return
+	return txID, quantity, nil
 }
 
 // VIEW

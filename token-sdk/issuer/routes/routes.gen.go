@@ -86,6 +86,12 @@ type ServerInterface interface {
 	// Issue tokens to an account
 	// (POST /issuer/issue)
 	Issue(ctx echo.Context) error
+	// Harvest tokens to an account
+	// (POST /harvest)
+	Harvest(ctx echo.Context) error
+	// RequestKabayan tokens to an account
+	// (POST /request-kabayan)
+	RequestKabayan(ctx echo.Context) error
 
 	// (GET /readyz)
 	Readyz(ctx echo.Context) error
@@ -111,6 +117,24 @@ func (w *ServerInterfaceWrapper) Issue(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.Issue(ctx)
+	return err
+}
+
+// Issue converts echo context to params.
+func (w *ServerInterfaceWrapper) Harvest(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Harvest(ctx)
+	return err
+}
+
+// Issue converts echo context to params.
+func (w *ServerInterfaceWrapper) RequestKabayan(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RequestKabayan(ctx)
 	return err
 }
 
@@ -153,6 +177,8 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.GET(baseURL+"/healthz", wrapper.Healthz)
 	router.POST(baseURL+"/issuer/issue", wrapper.Issue)
+	router.POST(baseURL+"/harvest", wrapper.Harvest)
+	router.POST(baseURL+"/request-kabayan", wrapper.RequestKabayan)
 	router.GET(baseURL+"/readyz", wrapper.Readyz)
 
 }
@@ -307,6 +333,64 @@ func (sh *strictHandler) Issue(ctx echo.Context) error {
 		return err
 	}
 	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.Issue(ctx.Request().Context(), request.(IssueRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Issue")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(IssueResponseObject); ok {
+		return validResponse.VisitIssueResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("Unexpected response type: %T", response)
+	}
+	return nil
+}
+
+func (sh *strictHandler) Harvest(ctx echo.Context) error {
+	var request IssueRequestObject
+
+	var body IssueJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+	request.Body.Amount.Code = "IDR"
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.Issue(ctx.Request().Context(), request.(IssueRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "Issue")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(IssueResponseObject); ok {
+		return validResponse.VisitIssueResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("Unexpected response type: %T", response)
+	}
+	return nil
+}
+
+func (sh *strictHandler) RequestKabayan(ctx echo.Context) error {
+	var request IssueRequestObject
+
+	var body IssueJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+	request.Body.Amount.Code = "KBY"
 
 	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
 		return sh.ssi.Issue(ctx.Request().Context(), request.(IssueRequestObject))

@@ -20,6 +20,9 @@ ls "$TEST_NETWORK_HOME/network.sh" 1> /dev/null || { echo "Set the TEST_NETWORK_
 export TEST_NETWORK_HOME=\"$TEST_NETWORK_HOME\"
 "; exit 1; }
 
+# Start Fabric network
+bash "$TEST_NETWORK_HOME/network.sh" up createChannel
+
 # Generate identities for the nodes, issuer, auditor and owner
 mkdir -p keys/ca
 docker-compose -f compose-ca.yaml up -d
@@ -28,9 +31,6 @@ while ! fabric-ca-client getcainfo -u localhost:27054 2>/dev/null; do echo "wait
 # generate the parameters needed for the tokenchaincode
 tokengen gen dlog --base 300 --exponent 5 --issuers keys/issuer/iss/msp --idemix keys/owner1/wallet/alice --auditors keys/auditor/aud/msp --output tokenchaincode
 
-
-# Start Fabric network
-bash "$TEST_NETWORK_HOME/network.sh" up createChannel
 # copy the keys and certs of the peers, orderer and the client user
 mkdir -p keys/fabric
 cp -r "$TEST_NETWORK_HOME/organizations" keys/fabric/

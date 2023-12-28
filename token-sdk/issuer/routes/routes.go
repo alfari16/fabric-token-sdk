@@ -29,7 +29,7 @@ func (c Controller) Issue(ctx context.Context, request IssueRequestObject) (Issu
 		message = *request.Body.Message
 	}
 
-	txID, err := c.Service.Issue(code, value, recipient, recipientNode, message)
+	txID, qty, err := c.Service.Issue(code, value, recipient, recipientNode, message)
 	if err != nil {
 		return IssuedefaultJSONResponse{
 			Body: Error{
@@ -42,7 +42,7 @@ func (c Controller) Issue(ctx context.Context, request IssueRequestObject) (Issu
 
 	return Issue200JSONResponse{
 		IssueSuccessJSONResponse: IssueSuccessJSONResponse{
-			Message: fmt.Sprintf("issued %d %s to %s on %s", value, code, recipient, recipientNode),
+			Message: fmt.Sprintf("issued %d %s to %s on %s", qty, code, recipient, recipientNode),
 			Payload: txID,
 		},
 	}, nil

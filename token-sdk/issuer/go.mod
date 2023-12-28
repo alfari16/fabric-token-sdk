@@ -9,6 +9,7 @@ require (
 	github.com/getkin/kin-openapi v0.120.0
 	github.com/hyperledger-labs/fabric-smart-client v0.3.0
 	github.com/hyperledger-labs/fabric-token-sdk v0.3.0
+	github.com/hyperledger/fabric-samples/token-sdk/owner v0.0.0-20231212141406-02d9f8c58b84
 	github.com/labstack/echo/v4 v4.11.1
 	github.com/pkg/errors v0.9.1
 )
