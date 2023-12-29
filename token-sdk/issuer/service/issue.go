@@ -7,6 +7,8 @@ SPDX-License-Identifier: Apache-2.0
 package service
 
 import (
+	"bytes"
+	"encoding/json"
 	"fmt"
 	"github.com/hyperledger-labs/fabric-smart-client/pkg/api"
 	viewregistry "github.com/hyperledger-labs/fabric-smart-client/platform/view"
@@ -16,6 +18,7 @@ import (
 	"github.com/hyperledger/fabric-samples/token-sdk/owner/service"
 	"github.com/pkg/errors"
 	"math"
+	"net/http"
 )
 
 var logger = flogging.MustGetLogger("service")
@@ -29,7 +32,26 @@ type BalanceService interface {
 
 type TokenService struct {
 	FSC api.ServiceProvider
-	BS  BalanceService
+	HC  *http.Client
+}
+
+type BalanceResponse struct {
+	Message string `json:"message"`
+	Payload struct {
+		Balance []struct {
+			Code  string `json:"code"`
+			Value int    `json:"value"`
+		} `json:"balance"`
+		Id string `json:"id"`
+	} `json:"payload"`
+}
+
+type RedeemRequest struct {
+	Amount struct {
+		Code  string `json:"code"`
+		Value int    `json:"value"`
+	} `json:"amount"`
+	Message string `json:"message"`
 }
 
 // Issue issues an amount of tokens to a wallet. It connects to the other node, prepares the transaction,
@@ -59,22 +81,75 @@ func (s TokenService) Issue(tokenType string, quantity uint64, recipient string,
 
 	if tokenType == idrBalance {
 		logger.Infof("recipt %s kbyBalance %s", recipient, kbyBalance)
-		balance, err := s.BS.GetBalance(recipient, kbyBalance)
+
+		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:9200/api/v1/owner/accounts/%s", recipient), nil)
 		if err != nil {
-			return "", 0, fmt.Errorf("cannot get kabayan balance response: %w", err)
+			return "", 0, fmt.Errorf("error when scaffloding request: %w", err)
 		}
 
-		kby, ok := balance[kbyBalance]
-		if ok && kby > 0 {
-			quantity = uint64(math.Min(float64(kby), float64(quantity)))
-			_, err := s.BS.RedeemTokens(kbyBalance, quantity, recipient, "kabayan payment")
-			if err != nil {
-				return "", 0, fmt.Errorf("cannot redeem kabayan balance: %w", err)
+		resp, err := s.HC.Do(req)
+		if err != nil {
+			return "", 0, fmt.Errorf("error when do http request: %w", err)
+		}
+		defer resp.Body.Close()
+
+		var balance BalanceResponse
+		err = json.NewDecoder(resp.Body).Decode(&balance)
+		if err != nil {
+			return "", 0, fmt.Errorf("error when unmarshalling : %w", err)
+		}
+
+		var kby int
+		for _, v := range balance.Payload.Balance {
+			if v.Code == kbyBalance {
+				kby = v.Value
 			}
-			_, err = s.BS.RedeemTokens(idrBalance, quantity, recipient, "kabayan payment")
-			if err != nil {
-				return "", 0, fmt.Errorf("cannot redeem idr balance: %w", err)
+		}
+		if kby > 0 {
+			qty := math.Min(float64(kby), float64(quantity))
+			quantity = quantity - uint64(qty)
+
+			payload := RedeemRequest{
+				Amount: struct {
+					Code  string `json:"code"`
+					Value int    `json:"value"`
+				}(struct {
+					Code  string
+					Value int
+				}{Code: kbyBalance, Value: int(qty)}),
+				Message: "kabayan payment",
 			}
+			marshalled, err := json.Marshal(payload)
+			if err != nil {
+				return "", 0, fmt.Errorf("error when marshalling: %w", err)
+			}
+
+			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:9200/api/v1/owner/accounts/%s/redeem", recipient), bytes.NewReader(marshalled))
+			if err != nil {
+				return "", 0, fmt.Errorf("error when scaffloding redeem request: %w", err)
+			}
+
+			resp, err := s.HC.Do(req)
+			if err != nil {
+				return "", 0, fmt.Errorf("error when do redeem http request: %w", err)
+			}
+			defer resp.Body.Close()
+
+			payload.Amount.Code = idrBalance
+			marshalledIdr, err := json.Marshal(payload)
+			if err != nil {
+				return "", 0, fmt.Errorf("error when marshalling: %w", err)
+			}
+			req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:9200/api/v1/owner/accounts/%s/redeem", recipient), bytes.NewReader(marshalledIdr))
+			if err != nil {
+				return "", 0, fmt.Errorf("error when scaffloding redeem request: %w", err)
+			}
+
+			resp, err = s.HC.Do(req)
+			if err != nil {
+				return "", 0, fmt.Errorf("error when do redeem http request: %w", err)
+			}
+			defer resp.Body.Close()
 		}
 	}
 
