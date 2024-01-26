@@ -3,7 +3,6 @@ package chaincode
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
 
 	"github.com/hyperledger/fabric-contract-api-go/contractapi"
 )
@@ -72,9 +71,6 @@ func (s *SmartContract) CreateAsset(ctx contractapi.TransactionContextInterface,
 		return err
 	}
 
-	res := ctx.GetStub().InvokeChaincode("tobangado", [][]byte{[]byte("CreateAsset"), []byte(id), []byte(color), []byte(strconv.Itoa(size)), []byte(owner), []byte(strconv.Itoa(appraisedValue))}, "mychannel")
-	fmt.Println("==== response from invoke tobangado", res.Status, res.Message, string(res.Payload), res.String())
-
 	return ctx.GetStub().PutState(id, assetJSON)
 }
 
@@ -93,6 +89,8 @@ func (s *SmartContract) ReadAsset(ctx contractapi.TransactionContextInterface, i
 	if err != nil {
 		return nil, err
 	}
+
+	ctx.GetStub().InvokeChaincode("tokenchaincode", [][]byte{[]byte("alice")}, "mychannel")
 
 	return &asset, nil
 }
