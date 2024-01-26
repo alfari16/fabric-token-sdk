@@ -1,0 +1,1 @@
+curl -X POST http://localhost:9100/api/v1/issuer/issue -H 'Content-Type: application/json' -d '{"amount": {"code": "IDR","value": 500},"counterparty": {"node": "owner1","account": "bob"},"message": "harvest pond 2"    }'

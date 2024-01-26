@@ -7,9 +7,9 @@ SPDX-License-Identifier: Apache-2.0
 package service
 
 import (
-	"bytes"
-	"encoding/json"
-	"fmt"
+	// "bytes"
+	// "encoding/json"
+	// "fmt"
 	"github.com/hyperledger-labs/fabric-smart-client/pkg/api"
 	viewregistry "github.com/hyperledger-labs/fabric-smart-client/platform/view"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/flogging"
@@ -17,7 +17,7 @@ import (
 	"github.com/hyperledger-labs/fabric-token-sdk/token/services/ttx"
 	"github.com/hyperledger/fabric-samples/token-sdk/owner/service"
 	"github.com/pkg/errors"
-	"math"
+	// "math"
 	"net/http"
 )
 
@@ -76,82 +76,82 @@ func (s TokenService) Issue(tokenType string, quantity uint64, recipient string,
 		return "", 0, errors.New("cannot parse issue response")
 	}
 
-	const kbyBalance = "KBY"
-	const idrBalance = "IDR"
+	// const kbyBalance = "KBY"
+	// const idrBalance = "IDR"
 
-	if tokenType == idrBalance {
-		logger.Infof("recipt %s kbyBalance %s", recipient, kbyBalance)
+	// if tokenType == idrBalance {
+	// 	logger.Infof("recipt %s kbyBalance %s", recipient, kbyBalance)
 
-		req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:9200/api/v1/owner/accounts/%s", recipient), nil)
-		if err != nil {
-			return "", 0, fmt.Errorf("error when scaffloding request: %w", err)
-		}
+	// 	req, err := http.NewRequest(http.MethodGet, fmt.Sprintf("http://localhost:9200/api/v1/owner/accounts/%s", recipient), nil)
+	// 	if err != nil {
+	// 		return "", 0, fmt.Errorf("error when scaffloding request: %w", err)
+	// 	}
 
-		resp, err := s.HC.Do(req)
-		if err != nil {
-			return "", 0, fmt.Errorf("error when do http request: %w", err)
-		}
-		defer resp.Body.Close()
+	// 	resp, err := s.HC.Do(req)
+	// 	if err != nil {
+	// 		return "", 0, fmt.Errorf("error when do http request: %w", err)
+	// 	}
+	// 	defer resp.Body.Close()
 
-		var balance BalanceResponse
-		err = json.NewDecoder(resp.Body).Decode(&balance)
-		if err != nil {
-			return "", 0, fmt.Errorf("error when unmarshalling : %w", err)
-		}
+	// 	var balance BalanceResponse
+	// 	err = json.NewDecoder(resp.Body).Decode(&balance)
+	// 	if err != nil {
+	// 		return "", 0, fmt.Errorf("error when unmarshalling : %w", err)
+	// 	}
 
-		var kby int
-		for _, v := range balance.Payload.Balance {
-			if v.Code == kbyBalance {
-				kby = v.Value
-			}
-		}
-		if kby > 0 {
-			qty := math.Min(float64(kby), float64(quantity))
-			quantity = quantity - uint64(qty)
+	// 	var kby int
+	// 	for _, v := range balance.Payload.Balance {
+	// 		if v.Code == kbyBalance {
+	// 			kby = v.Value
+	// 		}
+	// 	}
+	// 	if kby > 0 {
+	// 		qty := math.Min(float64(kby), float64(quantity))
+	// 		quantity = quantity - uint64(qty)
 
-			payload := RedeemRequest{
-				Amount: struct {
-					Code  string `json:"code"`
-					Value int    `json:"value"`
-				}(struct {
-					Code  string
-					Value int
-				}{Code: kbyBalance, Value: int(qty)}),
-				Message: "kabayan payment",
-			}
-			marshalled, err := json.Marshal(payload)
-			if err != nil {
-				return "", 0, fmt.Errorf("error when marshalling: %w", err)
-			}
+	// 		payload := RedeemRequest{
+	// 			Amount: struct {
+	// 				Code  string `json:"code"`
+	// 				Value int    `json:"value"`
+	// 			}(struct {
+	// 				Code  string
+	// 				Value int
+	// 			}{Code: kbyBalance, Value: int(qty)}),
+	// 			Message: "kabayan payment",
+	// 		}
+	// 		marshalled, err := json.Marshal(payload)
+	// 		if err != nil {
+	// 			return "", 0, fmt.Errorf("error when marshalling: %w", err)
+	// 		}
 
-			req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:9200/api/v1/owner/accounts/%s/redeem", recipient), bytes.NewReader(marshalled))
-			if err != nil {
-				return "", 0, fmt.Errorf("error when scaffloding redeem request: %w", err)
-			}
+	// 		req, err := http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:9200/api/v1/owner/accounts/%s/redeem", recipient), bytes.NewReader(marshalled))
+	// 		if err != nil {
+	// 			return "", 0, fmt.Errorf("error when scaffloding redeem request: %w", err)
+	// 		}
 
-			resp, err := s.HC.Do(req)
-			if err != nil {
-				return "", 0, fmt.Errorf("error when do redeem http request: %w", err)
-			}
-			defer resp.Body.Close()
+	// 		resp, err := s.HC.Do(req)
+	// 		if err != nil {
+	// 			return "", 0, fmt.Errorf("error when do redeem http request: %w", err)
+	// 		}
+	// 		defer resp.Body.Close()
 
-			payload.Amount.Code = idrBalance
-			marshalledIdr, err := json.Marshal(payload)
-			if err != nil {
-				return "", 0, fmt.Errorf("error when marshalling: %w", err)
-			}
-			req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:9200/api/v1/owner/accounts/%s/redeem", recipient), bytes.NewReader(marshalledIdr))
-			if err != nil {
-				return "", 0, fmt.Errorf("error when scaffloding redeem request: %w", err)
-			}
+	// 		payload.Amount.Code = idrBalance
+	// 		marshalledIdr, err := json.Marshal(payload)
+	// 		if err != nil {
+	// 			return "", 0, fmt.Errorf("error when marshalling: %w", err)
+	// 		}
+	// 		req, err = http.NewRequest(http.MethodPost, fmt.Sprintf("http://localhost:9200/api/v1/owner/accounts/%s/redeem", recipient), bytes.NewReader(marshalledIdr))
+	// 		if err != nil {
+	// 			return "", 0, fmt.Errorf("error when scaffloding redeem request: %w", err)
+	// 		}
 
-			resp, err = s.HC.Do(req)
-			if err != nil {
-				return "", 0, fmt.Errorf("error when do redeem http request: %w", err)
-			}
-			defer resp.Body.Close()
-		}
-	}
+	// 		resp, err = s.HC.Do(req)
+	// 		if err != nil {
+	// 			return "", 0, fmt.Errorf("error when do redeem http request: %w", err)
+	// 		}
+	// 		defer resp.Body.Close()
+	// 	}
+	// }
 
 	logger.Infof("issued %d %s to [%s] on [%s] with message [%s]. ID: [%s]", quantity, tokenType, recipient, recipientNode, message, txID)
 	return txID, quantity, nil
