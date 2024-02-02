@@ -5,22 +5,21 @@ import (
 	"errors"
 	"fmt"
 	"github.com/cloudflare/tableflip"
-	"io"
-	"net/http"
-	"os"
-	"os/signal"
-	"syscall"
-	"time"
-
-	"github.com/hyperledger/fabric-samples/token-sdk/owner/routes"
-	"github.com/hyperledger/fabric-samples/token-sdk/owner/service"
-
 	"github.com/hyperledger-labs/fabric-smart-client/pkg/api"
 	"github.com/hyperledger-labs/fabric-smart-client/pkg/node"
 	fabric "github.com/hyperledger-labs/fabric-smart-client/platform/fabric/sdk"
 	viewregistry "github.com/hyperledger-labs/fabric-smart-client/platform/view"
 	"github.com/hyperledger-labs/fabric-smart-client/platform/view/services/flogging"
 	tokensdk "github.com/hyperledger-labs/fabric-token-sdk/token/sdk"
+	"github.com/hyperledger/fabric-samples/token-sdk/owner/routes"
+	"github.com/hyperledger/fabric-samples/token-sdk/owner/service"
+	"io"
+	"net"
+	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 )
 
 var logger = flogging.MustGetLogger("main")
@@ -28,10 +27,6 @@ var logger = flogging.MustGetLogger("main")
 func main() {
 	dir := getEnv("CONF_DIR", "./conf/owner1")
 	port := getEnv("PORT", "9200")
-
-	coreConfig := fmt.Sprintf("%s/core.yaml", dir)
-	conf, err := fetchConfig(coreConfig)
-	succeedOrPanic(err)
 
 	fsc := startFabricSmartClient(dir)
 	// Tell the service how to respond to other nodes when they initiate an action
@@ -44,33 +39,47 @@ func main() {
 	upg, _ := tableflip.New(tableflip.Options{})
 	defer upg.Stop()
 
+	// Do an upgrade on SIGHUP
+	go func() {
+		sig := make(chan os.Signal, 1)
+		signal.Notify(sig, syscall.SIGHUP)
+		for range sig {
+			_ = upg.Upgrade()
+		}
+	}()
+
+	var server http.Server
+	ln, _ := upg.Fds.Listen("tcp", fmt.Sprintf(":%s", port))
+
+	// watch if the config file changes
+	changes, coreConfig := make(chan int), fmt.Sprintf("%s/core.yaml", dir)
+	var conf string
 	go func() {
 		for {
 			newConf, err := fetchConfig(coreConfig)
 			if err != nil {
 				logger.Errorf("failed fetching config: %w", err)
+				os.Exit(1)
 			}
 			if newConf != conf {
-				_ = upg.Upgrade()
+				conf = newConf
+				changes <- 1
 			}
 			time.Sleep(time.Second)
 		}
 	}()
 
-	server := routes.StartWebServer(controller, logger)
-	ln, _ := upg.Fds.Listen("tcp", fmt.Sprintf(":%s", port))
-
+	// waiting for changes
 	go func() {
-		err := server.Serve(ln)
-		if err != nil {
-			if errors.Is(err, http.ErrServerClosed) {
-				logger.Infof("Webserver closing, exiting...", err.Error())
-				fsc.Stop()
-			} else {
-				logger.Fatalf("echo error - %s", err.Error())
-				fsc.Stop()
-				os.Exit(1)
+		for range changes {
+			logger.Infof("config changes detected, restarting web server")
+			ns := routes.StartWebServer(controller, logger)
+			go serve(&ns, ln)
+			err := server.Shutdown(context.TODO())
+			if err != nil {
+				logger.Errorf("error shutting down old config server: %w", err)
 			}
+			server = ns
 		}
 	}()
 
@@ -159,4 +168,18 @@ func fetchConfig(dir string) (string, error) {
 	b, err := io.ReadAll(f)
 
 	return string(b), err
+}
+
+func serve(server *http.Server, ln net.Listener) {
+	err := server.Serve(ln)
+	if err != nil {
+		if errors.Is(err, http.ErrServerClosed) {
+			logger.Infof("Webserver closing, exiting...", err.Error())
+			//fsc.Stop()
+		} else {
+			logger.Fatalf("echo error - %s", err.Error())
+			//fsc.Stop()
+			os.Exit(1)
+		}
+	}
 }
