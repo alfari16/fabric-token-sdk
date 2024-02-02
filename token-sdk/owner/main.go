@@ -1,10 +1,16 @@
 package main
 
 import (
+	"context"
+	"errors"
+	"fmt"
+	"github.com/cloudflare/tableflip"
+	"io"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/hyperledger/fabric-samples/token-sdk/owner/routes"
 	"github.com/hyperledger/fabric-samples/token-sdk/owner/service"
@@ -23,6 +29,10 @@ func main() {
 	dir := getEnv("CONF_DIR", "./conf/owner1")
 	port := getEnv("PORT", "9200")
 
+	coreConfig := fmt.Sprintf("%s/core.yaml", dir)
+	conf, err := fetchConfig(coreConfig)
+	succeedOrPanic(err)
+
 	fsc := startFabricSmartClient(dir)
 	// Tell the service how to respond to other nodes when they initiate an action
 	registry := viewregistry.GetRegistry(fsc)
@@ -30,17 +40,44 @@ func main() {
 	succeedOrPanic(registry.RegisterResponder(&service.AcceptCashView{}, &service.TransferView{}))
 
 	controller := routes.Controller{Service: service.TokenService{FSC: fsc}}
-	err := routes.StartWebServer(port, controller, logger)
-	if err != nil {
-		if err == http.ErrServerClosed {
-			logger.Infof("Webserver closing, exiting...", err.Error())
-			fsc.Stop()
-		} else {
-			logger.Fatalf("echo error - %s", err.Error())
-			fsc.Stop()
-			os.Exit(1)
+
+	upg, _ := tableflip.New(tableflip.Options{})
+	defer upg.Stop()
+
+	go func() {
+		for {
+			newConf, err := fetchConfig(coreConfig)
+			if err != nil {
+				logger.Errorf("failed fetching config: %w", err)
+			}
+			if newConf != conf {
+				_ = upg.Upgrade()
+			}
+			time.Sleep(time.Second)
 		}
-	}
+	}()
+
+	server := routes.StartWebServer(controller, logger)
+	ln, _ := upg.Fds.Listen("tcp", fmt.Sprintf(":%s", port))
+
+	go func() {
+		err := server.Serve(ln)
+		if err != nil {
+			if errors.Is(err, http.ErrServerClosed) {
+				logger.Infof("Webserver closing, exiting...", err.Error())
+				fsc.Stop()
+			} else {
+				logger.Fatalf("echo error - %s", err.Error())
+				fsc.Stop()
+				os.Exit(1)
+			}
+		}
+	}()
+
+	_ = upg.Ready()
+	<-upg.Exit()
+
+	server.Shutdown(context.TODO())
 }
 
 type Node interface {
@@ -111,4 +148,15 @@ func handleSignals(handlers map[os.Signal]func()) {
 		logger.Infof("Received signal: %d (%s)", sig, sig)
 		handlers[sig]()
 	}
+}
+
+func fetchConfig(dir string) (string, error) {
+	f, err := os.Open(dir)
+	if err != nil {
+		return "", err
+	}
+
+	b, err := io.ReadAll(f)
+
+	return string(b), err
 }
