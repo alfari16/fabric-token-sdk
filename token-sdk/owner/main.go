@@ -107,11 +107,11 @@ func main() {
 			newFsc := startFabricSmartClient(copiedDir)
 
 			// Tell the service how to respond to other nodes when they initiate an action
-			registry := viewregistry.GetRegistry(fsc)
+			registry := viewregistry.GetRegistry(newFsc)
 			succeedOrPanic(registry.RegisterResponder(&service.AcceptCashView{}, "github.com/hyperledger/fabric-samples/token-sdk/issuer/service/IssueCashView"))
 			succeedOrPanic(registry.RegisterResponder(&service.AcceptCashView{}, &service.TransferView{}))
 
-			controller := routes.Controller{Service: service.TokenService{FSC: fsc}}
+			controller := routes.Controller{Service: service.TokenService{FSC: newFsc}}
 			handler = routes.StartWebServer(controller, logger)
 
 			if fsc != nil {
